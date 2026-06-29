@@ -16,13 +16,14 @@
  */
 
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
-import { resolve, basename } from 'node:path';
+import { resolve, basename, join } from 'node:path';
 
-import type { Contract, DriftReport, EnvironmentName, ParsedEnvFile } from './types.js';
+import type { Contract, DriftReport, EnvironmentName, ParsedEnvFile, Finding } from './types.js';
 import { loadContract, findContract, ContractLoadError } from './config/load-contract.js';
 import { validateContract } from './contract/validate.js';
 import { checkEnvironment } from './engine/drift.js';
 import { diffEnvironments } from './engine/diff.js';
+import { scanServices, checkServices } from './engine/services.js';
 import { scanProjectCode, readEnvFile, discoverEnvFiles } from './scan/discover.js';
 import { resolvePrecedence } from './scan/precedence.js';
 import { parseDotenv, toEnvMap } from './parse/dotenv.js';
@@ -95,6 +96,7 @@ Usage:
 Options:
   --config <path>   Path to the contract (default: search cwd)
   --env <name>      Target environment
+  --service <name>  Limit scan to one declared service root (monorepo)
   --file <path>     A specific .env file to read values from
   --format <f>      Output format: terminal | json | sarif (default: terminal)
   --no-color        Disable ANSI colour
@@ -180,7 +182,16 @@ function cmdInit(args: Args): number {
 
 async function cmdScan(args: Args): Promise<number> {
   const { contract } = await getContract(args);
-  const root = flagStr(args, 'root') ?? process.cwd();
+  const cwd = flagStr(args, 'root') ?? process.cwd();
+
+  // `--service <name>` narrows the scan to one declared service's root.
+  const service = flagStr(args, 'service');
+  if (service && !contract.services?.[service]) {
+    err(`error: "${service}" is not a declared service in the contract.`);
+    return 2;
+  }
+  const root = service ? join(cwd, contract.services![service].root) : cwd;
+
   const references = scanProjectCode(root);
 
   // Resolve effective values with full .env precedence so ENV006 (shadowing)
@@ -190,7 +201,12 @@ async function cmdScan(args: Args): Promise<number> {
   const { values } = resolvePrecedence(envFiles, env);
 
   // Docker / Compose adapter: discover image-build env and flag baked secrets.
-  const dockerFindings = checkDocker(discoverDocker(root), contract);
+  const extraFindings: Finding[] = checkDocker(discoverDocker(root), contract);
+
+  // Monorepo: cross-service consumer/producer drift (whole-repo scans only).
+  if (!service && contract.services) {
+    extraFindings.push(...checkServices(contract, scanServices(contract, cwd)));
+  }
 
   const report = checkEnvironment({
     contract,
@@ -198,7 +214,7 @@ async function cmdScan(args: Args): Promise<number> {
     values,
     references,
     files: envFiles,
-    extraFindings: dockerFindings,
+    extraFindings,
     now: new Date(),
   });
   emit(report, getFormat(args));
@@ -328,6 +344,8 @@ async function cmdExplain(args: Args): Promise<number> {
   out(`  Exposure:  ${def.exposure ?? '—'}`);
   out(`  Phase:     ${def.phase ?? '—'}`);
   out(`  Owner:     ${def.owner ?? '—'}`);
+  if (def.consumers?.length) out(`  Consumers: ${def.consumers.join(', ')}`);
+  if (def.producers?.length) out(`  Producers: ${def.producers.join(', ')}`);
   if (def.description) out(`  About:     ${def.description}`);
   out('');
 

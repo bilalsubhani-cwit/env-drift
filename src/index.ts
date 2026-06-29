@@ -33,6 +33,8 @@ export type { ContractError } from './contract/validate.js';
 export { checkEnvironment, correlateCode } from './engine/drift.js';
 export type { CheckInput } from './engine/drift.js';
 export { diffEnvironments } from './engine/diff.js';
+export { scanServices, checkServices } from './engine/services.js';
+export type { ServiceScan } from './engine/services.js';
 export { validateValue, coerceBoolean } from './engine/rules.js';
 export type { RuleIssue } from './engine/rules.js';
 

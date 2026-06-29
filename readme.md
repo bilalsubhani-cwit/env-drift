@@ -215,7 +215,7 @@ env-drift emits **stable rule identifiers** so teams can suppress, trend, and ga
 
 A provider or scan limitation is never reported as "no drift" — it surfaces as `ENV014` / `UNKNOWN` (exit code `4`).
 
-> env-drift implements `ENV001`–`ENV011`, `ENV014`, and `ENV016` today (including `ENV009` build/runtime drift via the Next.js/Vite build manifest). The remaining codes (`ENV012`, `ENV013`, `ENV015`) are reserved with stable identifiers and land with their adapters — see the [roadmap](#roadmap).
+> env-drift implements `ENV001`–`ENV011`, `ENV013`, `ENV014`, and `ENV016` today (including `ENV009` build/runtime drift via the Next.js/Vite build manifest, and `ENV013` service-scope checks in monorepos). The remaining codes (`ENV012`, `ENV015`) are reserved with stable identifiers and land with their adapters — see the [roadmap](#roadmap).
 
 ## Static Discovery
 
@@ -294,6 +294,41 @@ ENV009  "NEXT_PUBLIC_API_URL" was compiled with the staging value but the
 ```
 
 Manifests store only fingerprints, never raw values.
+
+## Monorepos & Multi-service
+
+Declare your services and scope variables to the ones that use them. env-drift scans each service's code separately and reports cross-service drift.
+
+```js
+module.exports = defineConfig({
+  contractVersion: 1,
+  environments: ["production"],
+  services: {
+    web: { root: "apps/web" },
+    api: { root: "apps/api" },
+    worker: { root: "apps/worker" },
+  },
+  variables: {
+    DATABASE_URL: variable.url({ secret: true, consumers: ["api", "worker"] }),
+    NEXT_PUBLIC_API_URL: variable.url({ exposure: "client", consumers: ["web"] }),
+    QUEUE_NAME: variable.string({ producers: ["api"], consumers: ["worker"] }),
+  },
+});
+```
+
+`env-drift scan` then catches:
+
+- **`ENV011`** — a declared consumer that never references the variable, or a service that references a variable it isn't a declared consumer of.
+- **`ENV013`** — a service granted a **secret it never uses** ("reduce its scope"). Over-shared secrets make rotation and compromise-attribution harder.
+
+```text
+ENV013  secret "DATABASE_URL" is granted to service "web" but it never
+        references the variable; reduce its scope
+ENV011  service "worker" is a declared consumer of "QUEUE_NAME" but never
+        references it
+```
+
+A service that uses **dynamic** env access is never accused of *not* using a variable — env-drift can't prove that statically, and says so. Use `--service <name>` to scan a single service, and the runtime loader's `service` option restricts the loaded env to that service's variables.
 
 ## Secret-safe Design
 
@@ -413,8 +448,8 @@ See the typed signatures and JSDoc in your editor for full details.
 | MVP (`0.1`) | Contract, dotenv parsing, AST-grade scan, missing/extra/invalid/unsafe detection, secret redaction, runtime loader, terminal/JSON/SARIF | ✅ shipped |
 | `0.2` | Duplicate keys (`ENV005`), `.env` precedence + shadowing (`ENV006`), suppression-expiry, scanner hardening | ✅ shipped |
 | `0.3` | Next.js/Vite build-manifest drift (`ENV009`), Dockerfile & Docker Compose awareness | ✅ shipped |
-| `0.4` | Monorepo support, ownership, deprecation and suppression workflows | planned |
-| `0.5` | GitHub, GitLab and Vercel read-only providers (`ENV013`) | planned |
+| `0.4` | Monorepo / multi-service support: cross-service consumer/producer drift (`ENV011`) and service-scope secrets (`ENV013`) | ✅ shipped |
+| `0.5` | GitHub, GitLab and Vercel read-only providers (CI/CD `ENV013` scope) | planned |
 | `1.0+` | systemd and Kubernetes deployment/runtime drift (`ENV012`), secret lifecycle (`ENV015`), signed snapshots | planned |
 
 env-drift is local-first and useful without an account or hosted service.

@@ -14,6 +14,42 @@ _No unreleased changes yet._
 
 ---
 
+## [0.4.0] — 2026-06-29
+
+Monorepo / multi-service support. The contract's `services`, `consumers`, and
+`producers` fields are now enforced across a repository. Still zero runtime
+dependencies.
+
+### Added
+
+- **Per-service scanning** ([`src/engine/services.ts`](./src/engine/services.ts)).
+  When the contract declares `services: { web: { root }, api: { root }, … }`,
+  each service's code is scanned separately so references can be attributed to
+  the service that makes them.
+- **Cross-service drift checks:**
+  - **`ENV011`** when a declared `consumer` of a variable never references it,
+    or when a service references a variable but is **not** a declared consumer.
+  - **`ENV013` (scope)** when a service is granted a **secret** it never uses —
+    "reduce its scope". Sharing secrets with services that don't need them makes
+    rotation and compromise-attribution harder.
+  - A service with **dynamic** env access is never accused of *not* using a
+    variable — that cannot be proven statically.
+  - These hygiene checks default to `warning`; a variable's `severity` overrides.
+- **CLI:** `scan` automatically runs cross-service checks when `services` are
+  declared; `--service <name>` limits a scan to a single service's root.
+  `explain` now shows a variable's `Consumers` / `Producers`.
+- New public API: `scanServices`, `checkServices`, and the `ServiceScan` type.
+
+### Notes
+
+- Live codes are now `ENV001`–`ENV011`, `ENV013`, `ENV014`, and `ENV016`.
+  `ENV013` is currently raised in the monorepo (service-scope) context; the
+  CI/CD provider-scope variant arrives with the provider adapters.
+- Reserved for later releases: `ENV012` (stale runtime), `ENV015` (secret
+  lifecycle).
+
+---
+
 ## [0.3.0] — 2026-06-29
 
 Adapters. env-drift now understands Docker and Next.js/Vite, which lights up
