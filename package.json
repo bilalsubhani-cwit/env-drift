@@ -1,0 +1,74 @@
+{
+  "name": "env-drift",
+  "version": "0.1.0",
+  "description": "Configuration contract, provenance and drift-detection engine for applications and CI/CD. Discovers env-var usage in code, validates it against a typed contract, and detects missing/extra/unsafe configuration. Secret-safe, zero dependencies, fully offline.",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "sideEffects": false,
+  "bin": {
+    "env-drift": "dist/cjs/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./runtime": {
+      "import": "./dist/esm/runtime/index.js",
+      "require": "./dist/cjs/runtime/index.js",
+      "types": "./dist/types/runtime/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "env",
+    "environment-variables",
+    "dotenv",
+    "config",
+    "configuration",
+    "drift",
+    "contract",
+    "validation",
+    "twelve-factor",
+    "12factor",
+    "secrets",
+    "ci-cd",
+    "provenance",
+    "sarif",
+    "next",
+    "vite"
+  ],
+  "author": "Bilal Subhani - CWIT",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cwit-ae/env-drift.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cwit-ae/env-drift/issues"
+  },
+  "homepage": "https://github.com/cwit-ae/env-drift#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.0"
+  }
+}
