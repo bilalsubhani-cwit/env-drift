@@ -87,7 +87,7 @@ checkEnvironment({ contract, environment: "production", values: process.env }).s
 
 The [Twelve-Factor](https://12factor.net/config) methodology stores config in the environment, but modern apps receive it from `.env` files, shell variables, CI/CD systems, Docker, Kubernetes, systemd, hosting providers, and secret managers — each with different precedence and lifecycle rules. env-drift gives you a single, reviewable place to declare what's expected and a fast, offline engine to detect where reality has drifted from it.
 
-This is the **MVP** release: the typed contract, the dotenv parser, the static code scanner, missing/extra/invalid/unsafe detection, secret redaction, the runtime validator, and `terminal` / `json` / `sarif` output. Framework and platform adapters (Next.js build-manifest drift, Docker, Kubernetes, and read-only providers for GitHub/GitLab/Vercel/Vault) are on the [roadmap](#roadmap).
+The **1.0** release covers: the typed contract, the dotenv parser, the static code scanner, missing/extra/invalid/unsafe detection, `.env` precedence and shadowing, secret-safe redaction, the runtime validator, Docker/Compose and Next.js/Vite build-manifest drift, monorepo cross-service checks, and `terminal` / `json` / `sarif` output. Read-only providers (GitHub/GitLab/Vercel/Vault) and Kubernetes/systemd runtime drift are on the [roadmap](#roadmap).
 
 ## Comparison with Other npm Packages
 
@@ -455,12 +455,10 @@ See the typed signatures and JSDoc in your editor for full details.
 
 | Stage | Scope | Status |
 |---|---|---|
-| MVP (`0.1`) | Contract, dotenv parsing, AST-grade scan, missing/extra/invalid/unsafe detection, secret redaction, runtime loader, terminal/JSON/SARIF | ✅ shipped |
-| `0.2` | Duplicate keys (`ENV005`), `.env` precedence + shadowing (`ENV006`), suppression-expiry, scanner hardening | ✅ shipped |
-| `0.3` | Next.js/Vite build-manifest drift (`ENV009`), Dockerfile & Docker Compose awareness | ✅ shipped |
-| `0.4` | Monorepo / multi-service support: cross-service consumer/producer drift (`ENV011`) and service-scope secrets (`ENV013`) | ✅ shipped |
-| `0.5` | GitHub, GitLab and Vercel read-only providers (CI/CD `ENV013` scope) | planned |
-| `1.0+` | systemd and Kubernetes deployment/runtime drift (`ENV012`), secret lifecycle (`ENV015`), signed snapshots | planned |
+| **`1.0`** | Typed contract, dotenv parsing + precedence/shadowing, AST-grade code scan, missing/extra/invalid/unsafe detection, duplicate keys, secret-safe redaction, runtime loader, Docker/Compose & Next.js/Vite build-manifest drift (`ENV009`), monorepo cross-service checks (`ENV011`/`ENV013`), terminal/JSON/SARIF, DoS-hardened | ✅ shipped |
+| `1.1` | GitHub, GitLab and Vercel read-only providers (CI/CD `ENV013` scope, remote required-key validation) | planned |
+| `1.2` | systemd and Kubernetes deployment/runtime drift (`ENV012`), secret lifecycle (`ENV015`) | planned |
+| `1.3+` | Signed metadata snapshots, optional dashboard & history | planned |
 
 env-drift is local-first and useful without an account or hosted service.
 

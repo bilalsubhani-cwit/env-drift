@@ -2,14 +2,13 @@
 
 ## Supported Versions
 
-env-drift is pre-1.0 and on a single active minor line. We provide security
-updates for the latest published release on the `0.x` line. Once `1.0` ships,
-this table will move to the latest `1.x` minor.
+env-drift provides security updates for the latest minor release on the `1.x`
+line.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
-| < 0.1   | :x:                |
+| 1.0.x   | :white_check_mark: |
+| < 1.0   | :x:                |
 
 If you are running an older version, please upgrade to the latest release
 before opening a security report — the issue may already be resolved.
