@@ -62,6 +62,20 @@ export type { ReportFormat } from './report/index.js';
 // Generators
 export { generateExample, generateTypes, generateDocs } from './generate/index.js';
 
+// Adapters (Docker / Compose / Next.js build manifest)
+export {
+  discoverDocker,
+  checkDocker,
+  isDockerfile,
+  isComposeFile,
+  parseDockerfile,
+  parseCompose,
+  writeManifest,
+  checkManifest,
+  parseYaml,
+} from './adapters/index.js';
+export type { AdapterVar, AdapterVarKind, BuildManifest, YamlValue } from './adapters/index.js';
+
 // Drift taxonomy
 export { CODES, codeInfo, maxSeverity, compareSeverity } from './codes.js';
 export type { CodeInfo } from './codes.js';

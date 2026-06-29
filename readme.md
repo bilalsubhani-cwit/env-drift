@@ -215,7 +215,7 @@ env-drift emits **stable rule identifiers** so teams can suppress, trend, and ga
 
 A provider or scan limitation is never reported as "no drift" — it surfaces as `ENV014` / `UNKNOWN` (exit code `4`).
 
-> env-drift implements `ENV001`–`ENV008`, `ENV010`, `ENV011`, `ENV014`, and `ENV016` today. The remaining codes (`ENV009`, `ENV012`, `ENV013`, `ENV015`) are reserved with stable identifiers and land with their adapters — see the [roadmap](#roadmap).
+> env-drift implements `ENV001`–`ENV011`, `ENV014`, and `ENV016` today (including `ENV009` build/runtime drift via the Next.js/Vite build manifest). The remaining codes (`ENV012`, `ENV013`, `ENV015`) are reserved with stable identifiers and land with their adapters — see the [roadmap](#roadmap).
 
 ## Static Discovery
 
@@ -258,6 +258,42 @@ QUEUE_NAME: variable.string({
 ```
 
 Values are compared without being revealed; secret values never appear in the diff output.
+
+## Adapters
+
+env-drift understands more than `.env` files. Adapters discover configuration from deployment systems and add their own checks — all still zero-dependency (the Compose YAML is parsed by an in-house subset parser).
+
+### Docker & Compose
+
+`scan` automatically discovers env configuration in Dockerfiles (`ENV`, `ARG`) and Compose files (`environment`, `env_file`, `build.args`). The headline check: a **secret carried by a build argument or image `ENV`** is an exposure violation (`ENV007`) — build args are recorded in image history and `ENV` persists in the final image, so neither may hold secrets.
+
+```text
+ENV007  "DATABASE_PASSWORD" is passed via compose build.args (web);
+        build arguments are recorded in image history, so it must not
+        carry a secret   (compose.yml:1)
+```
+
+### Next.js / Vite — build/runtime drift (ENV009)
+
+Public variables (`NEXT_PUBLIC_*`, `VITE_*`, …) are compiled into the client bundle at **build** time. Changing the server's runtime environment afterward does not change what's already baked into the built JavaScript — so a build promoted from staging to production can serve *staging* values to the browser.
+
+Write a manifest at build time, check it at deploy time:
+
+```bash
+# at build (records a fingerprint of each public value + the build's environment)
+env-drift manifest write --env staging --out build-manifest.json
+
+# at deploy (compares the manifest against the production target)
+env-drift manifest check --env production --manifest build-manifest.json
+```
+
+```text
+ENV009  "NEXT_PUBLIC_API_URL" was compiled with the staging value but the
+        production value differs; a rebuild is required (restarting will
+        not fix this)
+```
+
+Manifests store only fingerprints, never raw values.
 
 ## Secret-safe Design
 
@@ -372,16 +408,16 @@ See the typed signatures and JSDoc in your editor for full details.
 
 ## Roadmap
 
-| Stage | Scope |
-|---|---|
-| **MVP (this release)** | Contract, dotenv parsing, AST-grade scan, missing/extra/invalid/unsafe detection, secret redaction, runtime loader, terminal/JSON/SARIF |
-| 1.1 | Next.js, Vite, Dockerfile and Docker Compose awareness |
-| 1.2 | Monorepo support, ownership, deprecation and suppression workflows |
-| 1.3 | GitHub, GitLab and Vercel read-only providers |
-| 2.0 | systemd and Kubernetes deployment/runtime drift |
-| 2.2 | Build manifests, signed snapshots, workload contract versions |
+| Stage | Scope | Status |
+|---|---|---|
+| MVP (`0.1`) | Contract, dotenv parsing, AST-grade scan, missing/extra/invalid/unsafe detection, secret redaction, runtime loader, terminal/JSON/SARIF | ✅ shipped |
+| `0.2` | Duplicate keys (`ENV005`), `.env` precedence + shadowing (`ENV006`), suppression-expiry, scanner hardening | ✅ shipped |
+| `0.3` | Next.js/Vite build-manifest drift (`ENV009`), Dockerfile & Docker Compose awareness | ✅ shipped |
+| `0.4` | Monorepo support, ownership, deprecation and suppression workflows | planned |
+| `0.5` | GitHub, GitLab and Vercel read-only providers (`ENV013`) | planned |
+| `1.0+` | systemd and Kubernetes deployment/runtime drift (`ENV012`), secret lifecycle (`ENV015`), signed snapshots | planned |
 
-The MVP is local-first and useful without an account or hosted service.
+env-drift is local-first and useful without an account or hosted service.
 
 ## Contributing
 
@@ -394,7 +430,8 @@ env-drift ships **zero runtime dependencies** and bundles no third-party code, s
 ## Limitations
 
 - **Static analysis has limits.** Computed/dynamic environment access cannot be fully resolved; env-drift reports it as `ENV014` / `UNKNOWN` rather than guessing.
-- **MVP scope.** Provider integrations (GitHub/GitLab/Vercel/Vault), Docker/Kubernetes/systemd adapters, Next.js build-manifest drift (`ENV009`), and stale-runtime detection (`ENV012`) are declared in the taxonomy but land in later releases — see the [roadmap](#roadmap).
+- **Scope.** Docker/Compose and Next.js build-manifest drift (`ENV009`) ship today. Provider integrations (GitHub/GitLab/Vercel/Vault → `ENV013`), Kubernetes/systemd stale-runtime detection (`ENV012`), and secret lifecycle (`ENV015`) are declared in the taxonomy but land in later releases — see the [roadmap](#roadmap).
+- **Adapter locations.** Docker/Compose findings currently point at the file (line `1`); precise line tracking through the YAML parser is a follow-up.
 - **TypeScript configs are not loaded directly** (zero-dependency policy). Use a JS/JSON contract or compile first.
 - **Not a secret manager.** env-drift detects drift; it never mutates production, rotates secrets, or exports values.
 

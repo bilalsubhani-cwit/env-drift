@@ -26,8 +26,10 @@ import { diffEnvironments } from './engine/diff.js';
 import { scanProjectCode, readEnvFile, discoverEnvFiles } from './scan/discover.js';
 import { resolvePrecedence } from './scan/precedence.js';
 import { parseDotenv, toEnvMap } from './parse/dotenv.js';
-import { render, reportExitCode, type ReportFormat } from './report/index.js';
+import { render, reportFromFindings, reportExitCode, type ReportFormat } from './report/index.js';
 import { generateExample, generateTypes, generateDocs } from './generate/index.js';
+import { discoverDocker, checkDocker } from './adapters/docker/index.js';
+import { writeManifest, checkManifest, type BuildManifest } from './adapters/next/manifest.js';
 import { CODES } from './codes.js';
 import { maskValue } from './engine/redact.js';
 
@@ -86,6 +88,8 @@ Usage:
   env-drift diff <envA> <envB>            Policy-aware comparison of two environments
   env-drift explain <VAR> --env <name>    Show provenance and policy for one variable
   env-drift generate <example|types|docs> Emit an artifact from the contract
+  env-drift manifest write --env <name>   Write a build manifest (public-var fingerprints)
+  env-drift manifest check --env <name>   Detect build/runtime drift (ENV009) vs a manifest
   env-drift doctor                        Sanity-check the project setup
 
 Options:
@@ -185,7 +189,18 @@ async function cmdScan(args: Args): Promise<number> {
   const env = flagStr(args, 'env') ?? contract.environments[0];
   const { values } = resolvePrecedence(envFiles, env);
 
-  const report = checkEnvironment({ contract, environment: env, values, references, files: envFiles, now: new Date() });
+  // Docker / Compose adapter: discover image-build env and flag baked secrets.
+  const dockerFindings = checkDocker(discoverDocker(root), contract);
+
+  const report = checkEnvironment({
+    contract,
+    environment: env,
+    values,
+    references,
+    files: envFiles,
+    extraFindings: dockerFindings,
+    now: new Date(),
+  });
   emit(report, getFormat(args));
   return reportExitCode(report);
 }
@@ -232,19 +247,62 @@ async function cmdDiff(args: Args): Promise<number> {
   const valuesB = fileB ? toEnvMap(parseDotenv(readFileSync(resolve(fileB), 'utf8'), fileB)) : {};
 
   const findings = diffEnvironments(contract, a, valuesA, b, valuesB);
-  const report: DriftReport = {
-    status: findings.some((f) => f.severity === 'error') ? 'FAIL' : findings.length ? 'WARNING' : 'PASS',
-    findings,
-    suppressed: [],
-    summary: {
-      error: findings.filter((f) => f.severity === 'error').length,
-      warning: findings.filter((f) => f.severity === 'warning').length,
-      info: 0,
-      unknown: 0,
-    },
-  };
+  const report = reportFromFindings(findings);
   emit(report, getFormat(args));
   return reportExitCode(report);
+}
+
+async function cmdManifest(args: Args): Promise<number> {
+  const sub = args._[1];
+  const { contract } = await getContract(args);
+  const env = flagStr(args, 'env');
+  if (!env) {
+    err('error: --env <name> is required for manifest.');
+    return 2;
+  }
+
+  // Resolve the values this build/deploy sees.
+  const file = flagStr(args, 'file');
+  const values: Record<string, string> = file
+    ? toEnvMap(parseDotenv(readFileSync(resolve(file), 'utf8'), file))
+    : (process.env as Record<string, string>);
+
+  if (sub === 'write') {
+    const buildId =
+      flagStr(args, 'build-id') ?? process.env.BUILD_ID ?? process.env.GITHUB_SHA ?? 'unknown';
+    const manifest = writeManifest({ contract, environment: env, values, buildId });
+    const text = JSON.stringify(manifest, null, 2);
+    const outFile = flagStr(args, 'out');
+    if (outFile) {
+      writeFileSync(resolve(outFile), text, 'utf8');
+      out(`Wrote ${outFile}`);
+    } else {
+      out(text);
+    }
+    return 0;
+  }
+
+  if (sub === 'check') {
+    const manifestPath = flagStr(args, 'manifest');
+    if (!manifestPath) {
+      err('error: --manifest <path> is required for manifest check.');
+      return 2;
+    }
+    let manifest: BuildManifest;
+    try {
+      manifest = JSON.parse(readFileSync(resolve(manifestPath), 'utf8')) as BuildManifest;
+    } catch (e) {
+      err(`error: could not read manifest: ${(e as Error).message}`);
+      return 2;
+    }
+    const findings = checkManifest({ manifest, contract, environment: env, values });
+    const report = reportFromFindings(findings, env);
+    emit(report, getFormat(args));
+    return reportExitCode(report);
+  }
+
+  err('error: usage: env-drift manifest <write|check> --env <name> [...]');
+  return 2;
 }
 
 async function cmdExplain(args: Args): Promise<number> {
@@ -373,6 +431,9 @@ async function main(): Promise<void> {
       break;
     case 'generate':
       code = await cmdGenerate(args);
+      break;
+    case 'manifest':
+      code = await cmdManifest(args);
       break;
     case 'doctor':
       code = await cmdDoctor(args);

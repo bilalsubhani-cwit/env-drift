@@ -48,6 +48,11 @@ export interface CheckInput {
    * flattened `values` map cannot express.
    */
   files?: ParsedEnvFile[];
+  /**
+   * Findings produced outside the core engine (e.g. by source adapters) to be
+   * merged in before suppression and status resolution.
+   */
+  extraFindings?: Finding[];
   /** Injected clock for deterministic deprecation/suppression expiry. */
   now?: Date;
 }
@@ -162,6 +167,9 @@ export function checkEnvironment(input: CheckInput): DriftReport {
   if (input.references) {
     findings.push(...correlateCode(contract, input.references));
   }
+
+  // Findings from source adapters (Docker, Next.js, …).
+  if (input.extraFindings) findings.push(...input.extraFindings);
 
   return finalize(findings, contract.suppressions ?? [], environment, now);
 }

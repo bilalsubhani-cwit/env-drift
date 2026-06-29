@@ -14,6 +14,57 @@ _No unreleased changes yet._
 
 ---
 
+## [0.3.0] — 2026-06-29
+
+Adapters. env-drift now understands Docker and Next.js/Vite, which lights up
+`ENV009` (build/runtime drift). Still zero runtime dependencies — the YAML
+needed for Compose is parsed by an in-house subset parser.
+
+### Added
+
+- **Zero-dependency YAML subset parser**
+  ([`src/adapters/yaml/mini-yaml.ts`](./src/adapters/yaml/mini-yaml.ts)) — block
+  mappings, sequences, scalars, quotes, comments, and simple inline arrays;
+  enough to read Compose files without a YAML dependency.
+- **Docker adapter.** Discovers env configuration from Dockerfiles
+  (`ENV` in both `KEY=value` and legacy forms, `ARG`, line continuations) and
+  Compose files (`services.*.environment` map/list, `env_file`, `build.args`).
+  Reports **`ENV007`** when a secret is carried by a build argument or image
+  `ENV` — build args are recorded in image history and `ENV` persists in the
+  final image, so neither may hold secrets. Secret classification uses the
+  contract first, then a name heuristic (a heuristic-only match is a warning).
+  Values are never shown. The adapter runs automatically during `scan`.
+- **Next.js / Vite build-manifest adapter → `ENV009`.** `writeManifest`
+  fingerprints the public (`NEXT_PUBLIC_*`, `VITE_*`, …) values compiled into a
+  build and records the environment it was built for; `checkManifest` compares
+  that against the deploy target and reports `ENV009` when a public value was
+  compiled for a different environment, is now absent, or was added after the
+  build — i.e. when a **rebuild** (not a restart) is required. Manifests store
+  only fingerprints, never raw values.
+- **CLI `manifest write|check`.** `env-drift manifest write --env <e> [--out f]`
+  emits a build manifest; `env-drift manifest check --env <e> --manifest f`
+  reports build/runtime drift. `build-id` comes from `--build-id`, `BUILD_ID`,
+  or `GITHUB_SHA`.
+- New public API: `discoverDocker`, `checkDocker`, `parseDockerfile`,
+  `parseCompose`, `writeManifest`, `checkManifest`, `parseYaml`, and the
+  `reportFromFindings` reporter helper.
+
+### Changed
+
+- `checkEnvironment` accepts an optional `extraFindings: Finding[]` so adapter
+  findings flow through the same suppression, severity, and status resolution
+  as core findings.
+
+### Notes
+
+- Live codes are now `ENV001`–`ENV011`, `ENV014`, and `ENV016`. Reserved for
+  later releases: `ENV012` (stale runtime), `ENV013` (provider scope),
+  `ENV015` (secret lifecycle).
+- Adapter findings currently carry file-level locations (line `1`); precise
+  line tracking through the YAML parser is a follow-up.
+
+---
+
 ## [0.2.0] — 2026-06-29
 
 A hardening release that wires two reserved codes and tightens the scanner. No

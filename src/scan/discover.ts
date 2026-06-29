@@ -45,6 +45,15 @@ export function isEnvFile(path: string): boolean {
   return name === '.env' || name.startsWith('.env.');
 }
 
+/** Lists files under `root` whose path satisfies `match` (skips vendor dirs). */
+export function findFiles(root: string, match: (path: string) => boolean): string[] {
+  const out: string[] = [];
+  walk(root, (path) => {
+    if (match(path)) out.push(path);
+  });
+  return out;
+}
+
 /** Scans every source file under `root` for environment references. */
 export function scanProjectCode(root: string): CodeReference[] {
   const refs: CodeReference[] = [];

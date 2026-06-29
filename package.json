@@ -1,6 +1,6 @@
 {
   "name": "env-drift",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Configuration contract, provenance and drift-detection engine for applications and CI/CD. Discovers env-var usage in code, validates it against a typed contract, and detects missing/extra/unsafe configuration. Secret-safe, zero dependencies, fully offline.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
