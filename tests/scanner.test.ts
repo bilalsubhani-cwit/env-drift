@@ -45,4 +45,9 @@ describe('scanSource', () => {
     const refs = scanSource('\n\nconst x = process.env.FOO;', 'f.ts');
     expect(refs[0].location.line).toBe(3);
   });
+
+  it('handles optional chaining', () => {
+    expect(keys('process.env?.FOO;')).toEqual(['FOO']);
+    expect(keys('process.env?.["BAR"];')).toEqual(['BAR']);
+  });
 });

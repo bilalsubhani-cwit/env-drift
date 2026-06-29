@@ -151,8 +151,15 @@ function scanTokens(tokens: Token[], file: string): CodeReference[] {
     const env = matchEnvObject(tokens, t);
     if (!env) continue;
 
-    const after = t + env.len;
+    let after = t + env.len;
     const loc = { file, line: tokens[t].line, column: tokens[t].col };
+
+    // Tolerate optional chaining. The tokenizer emits `?` as an `other` token,
+    // so for `process.env?.X` (→ `?` `.` ident) skip the `?` to land on `.`,
+    // and for `process.env?.["X"]` (→ `?` `.` `[`) skip `?` and `.` to land on `[`.
+    if (tokens[after]?.type === 'other' && tokens[after].value === '?' && isPunct(tokens[after + 1], '.')) {
+      after += isPunct(tokens[after + 2], '[') ? 2 : 1;
+    }
 
     // ---- process.env.KEY -------------------------------------------------
     if (isPunct(tokens[after], '.') && isIdent(tokens[after + 1])) {

@@ -18,12 +18,13 @@
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
 
-import type { Contract, DriftReport, EnvironmentName } from './types.js';
+import type { Contract, DriftReport, EnvironmentName, ParsedEnvFile } from './types.js';
 import { loadContract, findContract, ContractLoadError } from './config/load-contract.js';
 import { validateContract } from './contract/validate.js';
 import { checkEnvironment } from './engine/drift.js';
 import { diffEnvironments } from './engine/diff.js';
 import { scanProjectCode, readEnvFile, discoverEnvFiles } from './scan/discover.js';
+import { resolvePrecedence } from './scan/precedence.js';
 import { parseDotenv, toEnvMap } from './parse/dotenv.js';
 import { render, reportExitCode, type ReportFormat } from './report/index.js';
 import { generateExample, generateTypes, generateDocs } from './generate/index.js';
@@ -178,14 +179,13 @@ async function cmdScan(args: Args): Promise<number> {
   const root = flagStr(args, 'root') ?? process.cwd();
   const references = scanProjectCode(root);
 
-  // Aggregate values across discovered .env files (later files do not win here;
-  // each is parsed, and the union of keys is checked for declared-vs-used).
+  // Resolve effective values with full .env precedence so ENV006 (shadowing)
+  // and provenance are accurate, and pass the parsed files for ENV005.
   const envFiles = discoverEnvFiles(root);
-  const values: Record<string, string> = {};
-  for (const f of envFiles) Object.assign(values, toEnvMap(f));
-
   const env = flagStr(args, 'env') ?? contract.environments[0];
-  const report = checkEnvironment({ contract, environment: env, values, references, now: new Date() });
+  const { values } = resolvePrecedence(envFiles, env);
+
+  const report = checkEnvironment({ contract, environment: env, values, references, files: envFiles, now: new Date() });
   emit(report, getFormat(args));
   return reportExitCode(report);
 }
@@ -200,6 +200,7 @@ async function cmdCheck(args: Args): Promise<number> {
 
   const file = flagStr(args, 'file');
   let values: Record<string, string>;
+  let files: ParsedEnvFile[] | undefined;
   if (file) {
     const parsed = readEnvFile(resolve(file));
     if (!parsed) {
@@ -207,11 +208,13 @@ async function cmdCheck(args: Args): Promise<number> {
       return 2;
     }
     values = toEnvMap(parsed);
+    files = [parsed]; // enables ENV005 duplicate detection for this file
   } else {
     values = process.env as Record<string, string>;
+    files = undefined;
   }
 
-  const report = checkEnvironment({ contract, environment: env, values, now: new Date() });
+  const report = checkEnvironment({ contract, environment: env, values, files, now: new Date() });
   emit(report, getFormat(args));
   return reportExitCode(report);
 }

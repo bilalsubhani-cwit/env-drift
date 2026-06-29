@@ -8,6 +8,8 @@
  * the CLI can pick a deterministic exit code.
  */
 
+import { basename } from 'node:path';
+
 import type {
   Contract,
   VariableDef,
@@ -19,9 +21,12 @@ import type {
   Severity,
   DriftCode,
   Suppression,
+  ParsedEnvFile,
 } from '../types.js';
 import { CODES } from '../codes.js';
 import { validateValue } from './rules.js';
+import { resolvePrecedence } from '../scan/precedence.js';
+import { compareValues } from './redact.js';
 
 /** Prefixes that expose a value to client/browser bundles. */
 const CLIENT_PREFIXES = ['NEXT_PUBLIC_', 'VITE_', 'REACT_APP_', 'PUBLIC_', 'EXPO_PUBLIC_', 'GATSBY_'];
@@ -37,6 +42,12 @@ export interface CheckInput {
   values: Record<string, string>;
   /** Optional code references, enabling unused/undeclared-in-code checks. */
   references?: CodeReference[];
+  /**
+   * Optional parsed `.env` files. When supplied, env-drift can report
+   * duplicate keys (`ENV005`) and precedence shadowing (`ENV006`), which the
+   * flattened `values` map cannot express.
+   */
+  files?: ParsedEnvFile[];
   /** Injected clock for deterministic deprecation/suppression expiry. */
   now?: Date;
 }
@@ -141,12 +152,72 @@ export function checkEnvironment(input: CheckInput): DriftReport {
   // ENV016 — keys that collide only by case (platform-portability hazard).
   findings.push(...caseCollisions(Object.keys(values), environment));
 
+  // ENV005 / ENV006 — only computable from parsed files with provenance.
+  if (input.files && input.files.length) {
+    findings.push(...duplicateFindings(input.files, declared, environment));
+    findings.push(...precedenceFindings(input.files, declared, environment));
+  }
+
   // Code-correlation checks, when references are supplied.
   if (input.references) {
     findings.push(...correlateCode(contract, input.references));
   }
 
   return finalize(findings, contract.suppressions ?? [], environment, now);
+}
+
+/** ENV005 — keys defined more than once within a single file. */
+function duplicateFindings(
+  files: ParsedEnvFile[],
+  declared: Record<string, VariableDef>,
+  environment: EnvironmentName,
+): Finding[] {
+  const out: Finding[] = [];
+  for (const f of files) {
+    for (const e of f.entries) {
+      if (!e.duplicate) continue;
+      out.push({
+        code: 'ENV005',
+        severity: severityFor(declared[e.key], 'ENV005'),
+        message: `"${e.key}" is defined more than once in ${basename(f.file)}`,
+        variable: e.key,
+        environment,
+        location: e.location,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * ENV006 — an unreviewed local-override file shadows a committed value with a
+ * different one. Intentional layering of committed files is not flagged, and
+ * values are never shown (only the file names).
+ */
+function precedenceFindings(
+  files: ParsedEnvFile[],
+  declared: Record<string, VariableDef>,
+  environment: EnvironmentName,
+): Finding[] {
+  const { provenance } = resolvePrecedence(files, environment);
+  const out: Finding[] = [];
+  for (const p of provenance) {
+    if (!p.winner.isLocal) continue; // only a local override is suspicious
+    const conflicting = p.shadowed.filter(
+      (d) => !d.isLocal && compareValues(d.value, p.winner.value) === 'different',
+    );
+    if (!conflicting.length) continue;
+    const shadowed = conflicting.map((c) => basename(c.file)).join(', ');
+    out.push({
+      code: 'ENV006',
+      severity: severityFor(declared[p.key], 'ENV006'),
+      message: `"${p.key}" from ${basename(p.winner.file)} (local override) shadows the reviewed value in ${shadowed}`,
+      variable: p.key,
+      environment,
+      location: p.winner.location,
+    });
+  }
+  return out;
 }
 
 /** ENV016 — detects keys that differ only by case. */
@@ -232,9 +303,15 @@ function finalize(
 
   for (const f of raw) {
     if (f.severity === 'off') continue;
-    const sup = matchSuppression(f, suppressions, now);
-    if (sup && !NON_SUPPRESSIBLE.has(f.code)) {
-      suppressed.push({ ...f, suppressed: true, suppressionReason: sup.reason });
+    const m = matchSuppression(f, suppressions, now);
+    if (m && !NON_SUPPRESSIBLE.has(f.code)) {
+      if (m.expired) {
+        // Expired suppression no longer silences the finding; it re-surfaces at
+        // its real severity (failing CI) with a note explaining why.
+        active.push({ ...f, message: `${f.message} (suppression expired ${m.suppression.expiresAt})` });
+      } else {
+        suppressed.push({ ...f, suppressed: true, suppressionReason: m.suppression.reason });
+      }
     } else {
       active.push(f);
     }
@@ -258,17 +335,18 @@ function finalize(
   return { status, findings: active, suppressed, summary, environment };
 }
 
-/** Finds an unexpired suppression matching a finding, if any. */
+/** Finds a suppression matching a finding (expired or not), if any. */
 function matchSuppression(
   finding: Finding,
   suppressions: Suppression[],
   now: Date,
-): Suppression | undefined {
-  return suppressions.find((s) => {
-    if (s.rule !== finding.code) return false;
-    if (s.variable && s.variable !== finding.variable) return false;
-    if (s.environment && s.environment !== finding.environment) return false;
-    if (s.expiresAt && now.getTime() > Date.parse(s.expiresAt)) return false; // expired
-    return true;
-  });
+): { suppression: Suppression; expired: boolean } | undefined {
+  for (const s of suppressions) {
+    if (s.rule !== finding.code) continue;
+    if (s.variable && s.variable !== finding.variable) continue;
+    if (s.environment && s.environment !== finding.environment) continue;
+    const expired = !!s.expiresAt && now.getTime() > Date.parse(s.expiresAt);
+    return { suppression: s, expired };
+  }
+  return undefined;
 }

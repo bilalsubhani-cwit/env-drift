@@ -50,7 +50,7 @@ function toUri(file: string): string {
 }
 
 /** Serializes a report to a SARIF 2.1.0 log string. */
-export function renderSarif(report: DriftReport, version = '0.1.0'): string {
+export function renderSarif(report: DriftReport, version = '0.2.0'): string {
   const rules = Object.values(CODES).map((info) => ({
     id: info.code,
     name: info.title.replace(/\s+/g, ''),

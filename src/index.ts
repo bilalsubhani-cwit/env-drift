@@ -40,6 +40,8 @@ export type { RuleIssue } from './engine/rules.js';
 export { parseDotenv, toEnvMap } from './parse/dotenv.js';
 export { scanSource } from './scan/code-scanner.js';
 export { scanProjectCode, discoverEnvFiles, readEnvFile, isEnvFile } from './scan/discover.js';
+export { resolvePrecedence, precedenceRank, isLocalSource } from './scan/precedence.js';
+export type { PrecedenceResult, KeyProvenance, KeyDefinition } from './scan/precedence.js';
 
 // Redaction / secret safety
 export {

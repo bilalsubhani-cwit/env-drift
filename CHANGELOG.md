@@ -14,6 +14,43 @@ _No unreleased changes yet._
 
 ---
 
+## [0.2.0] — 2026-06-29
+
+A hardening release that wires two reserved codes and tightens the scanner. No
+breaking changes; still zero runtime dependencies.
+
+### Added
+
+- **`ENV005` — duplicate keys.** The parser already flagged a key defined twice
+  in one file; the engine now emits `ENV005` for it. The CLI passes parsed
+  files to the engine (`scan`, and `check --file`) so duplicates are reported
+  with their source location.
+- **`ENV006` — precedence shadowing + provenance.** A new precedence resolver
+  ([`src/scan/precedence.ts`](./src/scan/precedence.ts)) ranks `.env` files the
+  way dotenv/Next.js layer them (`.env.{env}.local` > `.env.local` >
+  `.env.{env}` > `.env`). `scan` now resolves the *effective* value per key
+  through this order. `ENV006` fires only when an **unreviewed** local-override
+  file (`.env*.local`) shadows a **committed** file's value with a *different*
+  value — intentional layering of committed files is not flagged, and values
+  are never shown (only file names).
+- **Suppression-expiry notices.** When a suppression has passed its `expiresAt`,
+  the silenced finding re-surfaces at its real severity (failing CI) with a
+  note: `… (suppression expired YYYY-MM-DD)`.
+
+### Fixed
+
+- **Scanner: optional chaining.** `process.env?.X` and `process.env?.["X"]`
+  are now detected. Previously the `?.` between the env object and the key
+  prevented a match, so those references were silently missed.
+
+### Changed
+
+- `checkEnvironment` accepts an optional `files: ParsedEnvFile[]` input that
+  enables the `ENV005`/`ENV006` checks; the flattened `values` map alone cannot
+  express duplicates or provenance.
+
+---
+
 ## [0.1.0] — 2026-06-25
 
 The initial MVP release: a typed, reviewable environment contract plus an

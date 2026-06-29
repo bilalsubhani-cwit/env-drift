@@ -66,13 +66,15 @@ describe('suppressions', () => {
     expect(r.suppressed.some((f) => f.code === 'ENV001')).toBe(true);
   });
 
-  it('does not honour an expired suppression', () => {
+  it('does not honour an expired suppression and annotates the finding', () => {
     const c = defineConfig({
       ...contract,
       suppressions: [{ rule: 'ENV001', variable: 'DATABASE_URL', reason: 'wip', owner: 'me', expiresAt: '2020-01-01' }],
     });
     const r = checkEnvironment({ contract: c, environment: 'production', values: {}, now: NOW });
-    expect(r.findings.some((f) => f.code === 'ENV001')).toBe(true);
+    const f = r.findings.find((x) => x.code === 'ENV001');
+    expect(f).toBeDefined();
+    expect(f?.message).toContain('suppression expired 2020-01-01');
   });
 
   it('refuses to suppress ENV007 (non-suppressible)', () => {

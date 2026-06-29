@@ -215,7 +215,7 @@ env-drift emits **stable rule identifiers** so teams can suppress, trend, and ga
 
 A provider or scan limitation is never reported as "no drift" — it surfaces as `ENV014` / `UNKNOWN` (exit code `4`).
 
-> The MVP implements `ENV001`–`ENV008`, `ENV010`, `ENV011`, `ENV014`, and `ENV016` today. The remaining codes are reserved with stable identifiers and land with their adapters — see the [roadmap](#roadmap).
+> env-drift implements `ENV001`–`ENV008`, `ENV010`, `ENV011`, `ENV014`, and `ENV016` today. The remaining codes (`ENV009`, `ENV012`, `ENV013`, `ENV015`) are reserved with stable identifiers and land with their adapters — see the [roadmap](#roadmap).
 
 ## Static Discovery
 
