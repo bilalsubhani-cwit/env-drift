@@ -245,7 +245,16 @@ async function cmdCheck(args: Args): Promise<number> {
     files = undefined;
   }
 
-  const report = checkEnvironment({ contract, environment: env, values, files, now: new Date() });
+  // When reading the live process environment, do not enumerate its (often
+  // sensitive) undeclared key names into the report.
+  const report = checkEnvironment({
+    contract,
+    environment: env,
+    values,
+    files,
+    reportUndeclared: !!file,
+    now: new Date(),
+  });
   emit(report, getFormat(args));
   return reportExitCode(report);
 }

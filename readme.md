@@ -339,6 +339,16 @@ env-drift routinely sits next to secret material, so security is structural, not
 - **No raw values in comparisons.** In-memory comparison returns only `same` / `different` / `unknown`. When a persistent comparison token is unavoidable, env-drift uses a **keyed HMAC** (`fingerprint(value, key)`), never a bare hash of a low-entropy secret.
 - **`SecretValue` wrapper.** The runtime loader wraps secrets so they refuse to reveal themselves through `String()`, `JSON.stringify`, `console.log`, or `util.inspect`. The raw value is reachable only via an explicit `.reveal()`.
 - **No exfiltration commands.** There is deliberately no `env-drift export production`. The CLI cannot print secret values.
+- **Messages never echo secrets.** Validation messages render a secret value as `<redacted>` (and strip URL credentials / redact secret hostnames) — so an invalid secret can never leak through a finding, a report, a SARIF upload, or the runtime loader's error. Checking the live `process.env` does not enumerate its undeclared key names, which could otherwise reveal what secrets exist.
+
+### Hardening (DoS-resistant by design)
+
+env-drift is built to stay bounded on hostile input — no catastrophic backtracking, no symlink loops, no unbounded memory:
+
+- The filesystem walk **never follows symlinks** and is capped by depth, file count, and a 5 MB per-file limit.
+- Regex validation input is **capped at 4 KB** (ReDoS defence for user-supplied `pattern`s).
+- The Compose YAML parser **bounds nesting depth**, so deeply nested input can't overflow the stack.
+- A self-contained [secret-scan CI workflow](.github/workflows/secret-scan.yml) keeps `.env` files and high-signal secrets out of the repository and the published package.
 
 ```ts
 import { SecretValue } from "env-drift";

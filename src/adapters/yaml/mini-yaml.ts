@@ -65,8 +65,13 @@ function parseScalar(s: string): YamlValue {
   return t;
 }
 
+/** Max structural nesting; bounds recursion so deeply nested input cannot
+ * overflow the stack (DoS defence). Compose files are shallow in practice. */
+const MAX_DEPTH = 64;
+
 class Parser {
   private pos = 0;
+  private depth = 0;
   constructor(private readonly lines: Line[]) {}
 
   private peek(): Line | undefined {
@@ -77,10 +82,18 @@ class Parser {
   parseNode(minIndent: number): YamlValue {
     const first = this.peek();
     if (!first || first.indent < minIndent) return null;
+    if (this.depth >= MAX_DEPTH) {
+      // Refuse to recurse further; skip lines at this indent to make progress.
+      while (this.peek() && this.peek()!.indent >= minIndent) this.pos++;
+      return null;
+    }
+    this.depth++;
     const indent = first.indent;
-    return first.content.startsWith('- ') || first.content === '-'
+    const result = first.content.startsWith('- ') || first.content === '-'
       ? this.parseSequence(indent)
       : this.parseMapping(indent);
+    this.depth--;
+    return result;
   }
 
   private parseSequence(indent: number): YamlValue[] {

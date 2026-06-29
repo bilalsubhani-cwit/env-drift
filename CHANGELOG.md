@@ -14,6 +14,52 @@ _No unreleased changes yet._
 
 ---
 
+## [0.4.1] — 2026-06-29
+
+A security-hardening release. No new rule codes; behaviour changes are limited
+to redaction and resource limits. Zero runtime dependencies.
+
+### Security
+
+- **Fixed a secret-leak in validation messages.** Type/constraint messages such
+  as `expected a URL, got "<value>"` echoed the raw value — for a variable
+  marked `secret`, that leaked the secret into terminal/JSON/SARIF output and CI
+  artifacts. Secret values are now rendered as `<redacted>` in every message,
+  non-secret values have URL credentials stripped and are truncated, and a
+  secret URL's hostname is redacted in environment-safety messages. This also
+  covers the runtime loader's `EnvironmentValidationError` (it reuses the same
+  messages).
+- **No enumeration of live process-env names.** `env-drift check --env <e>`
+  without `--file` reads `process.env`, which carries hundreds of unrelated
+  OS/CI keys. It no longer reports those as `ENV002` (undeclared) — listing
+  their names could itself reveal which secrets exist in the environment.
+  Checks against an explicit `--file` still report undeclared keys. Configurable
+  via the new `reportUndeclared` option on `checkEnvironment`.
+
+### Hardened (DoS / resource exhaustion)
+
+- **Filesystem walk** never follows symbolic links (symlink-loop and
+  path-traversal defence) and is bounded by depth (40), file count (50,000),
+  and per-file size (5 MB) — a crafted symlink loop, a pathologically deep tree,
+  or a giant file can no longer hang the scan or exhaust memory.
+- **Regex input is capped** at 4,096 characters for value/pattern validation,
+  bounding the cost of a pathological user-supplied `pattern` (ReDoS defence)
+  and the size of any value rendered into a message.
+- **The YAML subset parser** bounds nesting depth (64), so deeply nested Compose
+  input cannot overflow the stack.
+
+### Added
+
+- **Self-contained secret-scan CI workflow**
+  ([`.github/workflows/secret-scan.yml`](.github/workflows/secret-scan.yml)) —
+  fails the build if any `.env` (other than `.env.example`) is committed, if a
+  high-signal secret pattern appears in a tracked file, or if the published
+  tarball would include source/`.env` files. No third-party action, nothing to
+  pin.
+- `checkEnvironment` gained a `reportUndeclared` option.
+
+---
+
 ## [0.4.0] — 2026-06-29
 
 Monorepo / multi-service support. The contract's `services`, `consumers`, and

@@ -53,6 +53,12 @@ export interface CheckInput {
    * merged in before suppression and status resolution.
    */
   extraFindings?: Finding[];
+  /**
+   * Whether to report keys present but not declared (`ENV002`). Defaults to
+   * `true`. Set `false` when `values` is the live process environment, to avoid
+   * enumerating unrelated OS/CI variable names into a report.
+   */
+  reportUndeclared?: boolean;
   /** Injected clock for deterministic deprecation/suppression expiry. */
   now?: Date;
 }
@@ -141,8 +147,11 @@ export function checkEnvironment(input: CheckInput): DriftReport {
     }
   }
 
-  // ENV002 — undeclared variables present in the environment.
-  for (const key of Object.keys(values)) {
+  // ENV002 — undeclared variables present in the environment. Skipped when the
+  // source is the live process environment (`reportUndeclared: false`): it
+  // carries hundreds of unrelated OS/CI keys, and enumerating their names into
+  // a report can itself leak which secrets exist in that environment.
+  for (const key of input.reportUndeclared === false ? [] : Object.keys(values)) {
     if (!Object.prototype.hasOwnProperty.call(declared, key)) {
       findings.push({
         code: 'ENV002',

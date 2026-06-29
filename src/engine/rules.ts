@@ -8,6 +8,7 @@
  */
 
 import type { VariableDef, EnvironmentName, EnvRules, DriftCode } from '../types.js';
+import { redactUrlCredentials, truncate } from './redact.js';
 
 /** A single rule violation: a code plus a human-readable message. */
 export interface RuleIssue {
@@ -17,6 +18,23 @@ export interface RuleIssue {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DURATION_RE = /^\d+(\.\d+)?\s*(ms|s|m|h|d)$/i;
+
+/**
+ * Upper bound on the input length fed to any regular expression. Caps both the
+ * cost of pathological user-supplied `pattern`s (ReDoS defence) and the size of
+ * values echoed into messages.
+ */
+const MAX_REGEX_INPUT = 4096;
+
+/**
+ * A display-safe rendering of a value for inclusion in a finding message.
+ * Secrets are never shown; non-secret values have URL credentials stripped and
+ * are truncated so a value is never dumped wholesale into a report.
+ */
+function display(def: VariableDef, value: string): string {
+  if (def.secret) return '<redacted>';
+  return truncate(redactUrlCredentials(value), 60);
+}
 
 /** Coerces common truthy/falsy spellings to a boolean, or `null` if invalid. */
 export function coerceBoolean(value: string): boolean | null {
@@ -40,10 +58,12 @@ function validateType(def: VariableDef, value: string, issues: RuleIssue[]): voi
   const bad = (message: string): void => {
     issues.push({ code: 'ENV004', message });
   };
+  // Display-safe rendering — never the raw value for a secret.
+  const shown = display(def, value);
 
   switch (def.type) {
     case 'integer': {
-      if (!/^-?\d+$/.test(value.trim())) return bad(`expected an integer, got "${value}"`);
+      if (!/^-?\d+$/.test(value.trim())) return bad(`expected an integer, got "${shown}"`);
       const n = Number(value);
       if (def.min !== undefined && n < def.min) bad(`must be >= ${def.min}`);
       if (def.max !== undefined && n > def.max) bad(`must be <= ${def.max}`);
@@ -51,16 +71,16 @@ function validateType(def: VariableDef, value: string, issues: RuleIssue[]): voi
     }
     case 'number': {
       const n = Number(value);
-      if (value.trim() === '' || Number.isNaN(n)) return bad(`expected a number, got "${value}"`);
+      if (value.trim() === '' || Number.isNaN(n)) return bad(`expected a number, got "${shown}"`);
       if (def.min !== undefined && n < def.min) bad(`must be >= ${def.min}`);
       if (def.max !== undefined && n > def.max) bad(`must be <= ${def.max}`);
       break;
     }
     case 'boolean':
-      if (coerceBoolean(value) === null) bad(`expected a boolean, got "${value}"`);
+      if (coerceBoolean(value) === null) bad(`expected a boolean, got "${shown}"`);
       break;
     case 'port': {
-      if (!/^\d+$/.test(value.trim())) return bad(`expected a port number, got "${value}"`);
+      if (!/^\d+$/.test(value.trim())) return bad(`expected a port number, got "${shown}"`);
       const n = Number(value);
       const min = def.min ?? 1;
       const max = def.max ?? 65535;
@@ -69,14 +89,14 @@ function validateType(def: VariableDef, value: string, issues: RuleIssue[]): voi
     }
     case 'url': {
       const u = parseUrl(value);
-      if (!u) return bad(`expected a URL, got "${value}"`);
+      if (!u) return bad(`expected a URL, got "${shown}"`);
       if (def.allowedProtocols && !def.allowedProtocols.includes(u.protocol)) {
         bad(`protocol "${u.protocol}" not allowed (expected ${def.allowedProtocols.join(', ')})`);
       }
       break;
     }
     case 'email':
-      if (!EMAIL_RE.test(value)) bad(`expected an email address, got "${value}"`);
+      if (!EMAIL_RE.test(value.slice(0, MAX_REGEX_INPUT))) bad(`expected an email address, got "${shown}"`);
       break;
     case 'enum':
       if (def.values && !def.values.includes(value)) {
@@ -96,7 +116,7 @@ function validateType(def: VariableDef, value: string, issues: RuleIssue[]): voi
       break;
     }
     case 'duration':
-      if (!DURATION_RE.test(value.trim())) bad(`expected a duration like "30s" or "5m", got "${value}"`);
+      if (!DURATION_RE.test(value.trim())) bad(`expected a duration like "30s" or "5m", got "${shown}"`);
       break;
     case 'secret':
     case 'string':
@@ -111,12 +131,16 @@ function validateType(def: VariableDef, value: string, issues: RuleIssue[]): voi
   if (def.maxLength !== undefined && value.length > def.maxLength) {
     bad(`must be at most ${def.maxLength} characters`);
   }
-  if (def.pattern && !new RegExp(def.pattern).test(value)) {
-    bad(`does not match required pattern /${def.pattern}/`);
+  if (def.pattern) {
+    if (value.length > MAX_REGEX_INPUT) {
+      bad(`value is too long to validate against the required pattern (> ${MAX_REGEX_INPUT} chars)`);
+    } else if (!new RegExp(def.pattern).test(value)) {
+      bad(`does not match required pattern /${def.pattern}/`);
+    }
   }
   if (def.forbiddenValues && def.forbiddenValues.includes(value)) {
     // A placeholder/known-bad literal. For secrets we never echo the value.
-    const shown = def.secret ? 'a forbidden placeholder value' : `the forbidden value "${value}"`;
+    const shown = def.secret ? 'a forbidden placeholder value' : `the forbidden value "${display(def, value)}"`;
     bad(`must not be ${shown}`);
   }
   if (def.validate) {
@@ -126,13 +150,15 @@ function validateType(def: VariableDef, value: string, issues: RuleIssue[]): voi
 }
 
 /** Applies environment-specific safety rules. Pushes `ENV008` issues. */
-function validateEnvRules(rules: EnvRules, value: string, issues: RuleIssue[]): void {
+function validateEnvRules(def: VariableDef, rules: EnvRules, value: string, issues: RuleIssue[]): void {
   const unsafe = (message: string): void => {
     issues.push({ code: 'ENV008', message });
   };
 
   const url = parseUrl(value);
   if (url) {
+    // The hostname of a secret connection string is itself sensitive.
+    const hostShown = def.secret ? '<redacted>' : url.hostname;
     if (rules.requireHttps && url.protocol !== 'https:') {
       unsafe('must use https in this environment');
     }
@@ -141,10 +167,10 @@ function validateEnvRules(rules: EnvRules, value: string, issues: RuleIssue[]): 
     }
     const host = url.hostname.toLowerCase();
     if (rules.forbiddenHosts && rules.forbiddenHosts.map((h) => h.toLowerCase()).includes(host)) {
-      unsafe(`host "${url.hostname}" is not allowed in this environment`);
+      unsafe(`host "${hostShown}" is not allowed in this environment`);
     }
     if (rules.allowedHosts && !rules.allowedHosts.map((h) => h.toLowerCase()).includes(host)) {
-      unsafe(`host "${url.hostname}" is not in the allowed set for this environment`);
+      unsafe(`host "${hostShown}" is not in the allowed set for this environment`);
     }
   }
 
@@ -166,7 +192,7 @@ function validateEnvRules(rules: EnvRules, value: string, issues: RuleIssue[]): 
     }
   }
 
-  if (rules.pattern && !new RegExp(rules.pattern).test(value)) {
+  if (rules.pattern && value.length <= MAX_REGEX_INPUT && !new RegExp(rules.pattern).test(value)) {
     unsafe(`does not match the required pattern for this environment`);
   }
 }
@@ -197,6 +223,6 @@ export function validateValue(
   const issues: RuleIssue[] = [];
   validateType(def, value, issues);
   const envRules = def.rules?.[environment];
-  if (envRules) validateEnvRules(envRules, value, issues);
+  if (envRules) validateEnvRules(def, envRules, value, issues);
   return issues;
 }
