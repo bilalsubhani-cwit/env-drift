@@ -1,27 +1,36 @@
+<!--
+  Badges are intentionally minimal at launch. Download/bundle-size and CI/CodeQL
+  badges are added once they have real data — empty badges read as "abandoned"
+  to a first-time visitor. Re-add from git history once there's traction:
+  npm downloads, bundlephobia min+gzip, CI status, CodeQL status.
+-->
 <p align="center">
   <a href="https://www.npmjs.com/package/env-drift"><img src="https://img.shields.io/npm/v/env-drift?style=flat-square&color=1a1a2e" alt="npm version" /></a>
-  <a href="https://github.com/cwit-ae/env-drift/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/cwit-ae/env-drift/ci.yml?branch=main&style=flat-square&color=1a1a2e&label=CI" alt="CI status" /></a>
-  <a href="https://github.com/cwit-ae/env-drift/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/cwit-ae/env-drift/codeql.yml?branch=main&style=flat-square&color=1a1a2e&label=CodeQL" alt="CodeQL status" /></a>
-  <a href="https://www.npmjs.com/package/env-drift"><img src="https://img.shields.io/npm/dm/env-drift?style=flat-square&color=1a1a2e" alt="npm downloads" /></a>
-  <a href="https://bundlephobia.com/package/env-drift"><img src="https://img.shields.io/bundlephobia/minzip/env-drift?style=flat-square&color=1a1a2e&label=min%2Bgzip" alt="bundle size" /></a>
-  <img src="https://img.shields.io/badge/zero-dependencies-1a1a2e?style=flat-square" alt="zero dependencies" />
-  <img src="https://img.shields.io/npm/l/env-drift?style=flat-square&color=1a1a2e" alt="license" />
+  <img src="https://img.shields.io/badge/dependencies-zero-1a1a2e?style=flat-square" alt="zero dependencies" />
+  <img src="https://img.shields.io/badge/node-%3E%3D18-1a1a2e?style=flat-square" alt="node >= 18" />
+  <img src="https://img.shields.io/badge/license-MIT-1a1a2e?style=flat-square" alt="MIT license" />
 </p>
 
 <h1 align="center">env-drift</h1>
 
 <p align="center">
-  <strong>A configuration contract, provenance and drift-detection engine for applications and CI/CD. It discovers how your code uses environment variables, validates them against a typed, reviewable contract, and catches configuration that is missing, undeclared, deprecated, or unsafe — before it reaches production.</strong>
+  <strong>The CI gate for your environment configuration. It catches drift across your code, <code>.env</code> files, Docker, and builds — a missing key, a staging URL in production, a secret on a <code>NEXT_PUBLIC_</code> prefix — <em>before</em> it ships.</strong>
 </p>
 
 <p align="center">
-  Static code discovery, environment-aware rules, and policy-aware comparison that understands intentional differences.<br/>
+  Not another env loader or runtime validator: env-drift checks your config against a typed, reviewable contract <em>before runtime</em>, then gates violations in CI.<br/>
   Zero runtime dependencies. Fully offline. Secret-safe by default — values are redacted everywhere.
 </p>
 
 <p align="center">
+  <strong>Who it's for:</strong> teams running more than one environment or service, whose config lives in more than one place
+  (<code>.env</code> + Docker + CI + build) — and who've been burned by a config-drift incident at least once.<br/>
+  If you have one <code>.env</code> and one process, a runtime validator is the lighter choice and env-drift is overkill.
+</p>
+
+<p align="center">
   <a href="#quick-start">Quick start</a> ·
-  <a href="#comparison-with-other-npm-packages">Comparison</a> ·
+  <a href="#how-env-drift-relates-to-the-tools-you-already-use">How it compares</a> ·
   <a href="#the-contract">Contract</a> ·
   <a href="#drift-taxonomy">Drift codes</a> ·
   <a href="#cli">CLI</a> ·
@@ -61,7 +70,7 @@ checkEnvironment({ contract, environment: "production", values: process.env }).s
 ## Table of Contents
 
 - [Overview](#overview)
-- [Comparison with Other npm Packages](#comparison-with-other-npm-packages)
+- [How env-drift relates to the tools you already use](#how-env-drift-relates-to-the-tools-you-already-use)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [The Contract](#the-contract)
@@ -89,20 +98,29 @@ The [Twelve-Factor](https://12factor.net/config) methodology stores config in th
 
 The **1.0** release covers: the typed contract, the dotenv parser, the static code scanner, missing/extra/invalid/unsafe detection, `.env` precedence and shadowing, secret-safe redaction, the runtime validator, Docker/Compose and Next.js/Vite build-manifest drift, monorepo cross-service checks, and `terminal` / `json` / `sarif` output. Read-only providers (GitHub/GitLab/Vercel/Vault) and Kubernetes/systemd runtime drift are on the [roadmap](#roadmap).
 
-## Comparison with Other npm Packages
+## How env-drift relates to the tools you already use
 
-| | env-drift | `dotenv-safe` | `envalid` | T3 Env | `dotenv-diff` |
-|---|---|---|---|---|---|
-| Typed, reviewable contract | ✅ | ❌ | partial | ✅ | ❌ |
-| Static discovery of code usage | ✅ tokenizer | ❌ | ❌ | ❌ | regex |
-| Environment-aware rules (prod ≠ localhost, HTTPS) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Secret-aware redaction | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Intentional-difference policies | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Stable rule codes + SARIF output | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Runtime validation library | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Zero runtime dependencies | ✅ | ❌ | ❌ | ❌ | ❌ |
+**env-drift is not a replacement for `dotenv`, `envalid`, `znv`, T3 Env, or `convict`** — it does a different job, and it composes with them. Those tools *load* and/or *validate* configuration **at runtime, in one process**. env-drift *detects drift* **before runtime, across your code and deployment surfaces** — and gates it in CI. You can keep validating with T3 Env or envalid in your app and add env-drift as the CI check that catches the missing key, the staging URL in production, or the secret on a `NEXT_PUBLIC_` prefix before deploy.
 
-env-drift is not another `.env` comparison utility. It is a configuration contract, provenance, and drift-detection engine.
+The trade-off is explicit: env-drift asks you to maintain a **contract file**. If all you want is co-located runtime validation, a loader/validator is the lighter choice. env-drift earns its keep when configuration spans multiple environments, services, and sources (`.env` + Docker + CI + build) and you want a reviewable, drift-gating contract over all of it.
+
+| Capability | env-drift | loaders (`dotenv`, `dotenv-flow`) | validators (`envalid`, `znv`, T3 Env) | `convict` |
+|---|---|---|---|---|
+| Provides config to your app at runtime | ❌ (by design) | ✅ (raw) | ✅ (validated) | ✅ (validated) |
+| Runtime typed validation | ✅ | ❌ | ✅ | ✅ |
+| Reviewable contract / schema | ✅ | ❌ | partial | ✅ |
+| **Static discovery of env usage in code** | ✅ | ❌ | ❌ | ❌ |
+| **Environment-aware safety rules** (prod ≠ localhost, HTTPS) | ✅ | ❌ | ❌ | ❌ |
+| **Multi-source drift** (.env + Docker + build manifest) | ✅ | ❌ | ❌ | ❌ |
+| **CI gating: stable codes + SARIF** | ✅ | ❌ | ❌ | ❌ |
+| **Secret-aware redaction in output** | ✅ | ❌ | ❌ | partial¹ |
+| Zero runtime dependencies | ✅ | varies | ❌ | ❌ |
+
+The bolded rows are the wedge: as far as we know, no widely-used free package does **static env-usage discovery + a reviewable contract + CI drift gating with SARIF and secret-safe reporting**. If you find one, please open an issue — we'll update this table.
+
+<sub>¹ `convict` masks values marked `sensitive: true` as `[Sensitive]` in `config.toString()`. env-drift redacts secrets across every output (terminal/JSON/SARIF/errors/diff), in comparisons, and in the runtime `SecretValue` wrapper.</sub>
+
+<sub>Comparison verified against each package's documentation in June 2026 — [envalid](https://github.com/af/envalid), [@t3-oss/env-core](https://env.t3.gg/docs/core), [znv](https://github.com/lostfictions/znv), [convict](https://github.com/mozilla/node-convict). T3 Env's docs state it feeds env vars "directly to the validator … rather than scanning your source code"; none of these tools perform static code discovery, multi-source drift detection, or SARIF output. Found an inaccuracy? Open an issue.</sub>
 
 ## Installation
 
