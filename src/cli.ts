@@ -15,11 +15,11 @@
  * Exit codes: 0 ok · 1 policy violations · 2 invalid contract/parse · 4 unknown.
  */
 
-import { writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { resolve, basename, join } from 'node:path';
 
-import type { Contract, DriftReport, EnvironmentName, ParsedEnvFile, Finding } from './types.js';
-import { loadContract, findContract, ContractLoadError } from './config/load-contract.js';
+import type { Contract, DriftReport, ParsedEnvFile, Finding } from './types.js';
+import { loadContract, findContract } from './config/load-contract.js';
 import { validateContract } from './contract/validate.js';
 import { checkEnvironment } from './engine/drift.js';
 import { diffEnvironments } from './engine/diff.js';
@@ -171,11 +171,21 @@ module.exports = defineConfig({
 
 function cmdInit(args: Args): number {
   const target = resolve(process.cwd(), 'envcanary.config.js');
-  if (existsSync(target) || findContract(process.cwd())) {
+  if (findContract(process.cwd())) {
     err('error: a contract already exists in this directory.');
     return 2;
   }
-  writeFileSync(target, STARTER, 'utf8');
+  try {
+    // `flag: 'wx'` creates the file only if it does not already exist, in a
+    // single atomic syscall — no check-then-write (TOCTOU) race.
+    writeFileSync(target, STARTER, { encoding: 'utf8', flag: 'wx' });
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'EEXIST') {
+      err('error: a contract already exists in this directory.');
+      return 2;
+    }
+    throw e;
+  }
   out(`Created ${basename(target)}. Edit it, then run \`envcanary scan\`.`);
   return 0;
 }

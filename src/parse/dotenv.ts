@@ -100,7 +100,11 @@ function readValue(lines: string[], startLine: number, from: string): ValueResul
   let value = v;
   const hashIdx = findInlineComment(value);
   if (hashIdx !== -1) value = value.slice(0, hashIdx);
-  value = value.replace(/[ \t]+$/, '');
+  // Trim trailing spaces/tabs with a linear scan (a `/[ \t]+$/` replace can
+  // backtrack quadratically on adversarial input — CodeQL js/polynomial-redos).
+  let end = value.length;
+  while (end > 0 && (value[end - 1] === ' ' || value[end - 1] === '\t')) end--;
+  value = value.slice(0, end);
   return { value, endLine: startLine };
 }
 

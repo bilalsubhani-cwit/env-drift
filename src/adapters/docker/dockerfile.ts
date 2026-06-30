@@ -6,9 +6,23 @@
 
 import type { AdapterVar } from '../types.js';
 
-const CONT = /\\\s*$/;
+const isWs = (ch: string): boolean => ch === ' ' || ch === '\t';
+const isKeyStart = (ch: string): boolean =>
+  (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch === '_';
+const isKeyPart = (ch: string): boolean => isKeyStart(ch) || (ch >= '0' && ch <= '9');
 
-/** Joins backslash-continued lines, tracking the starting line number. */
+/** Index of the last non-whitespace character in `line`, or -1. */
+function lastNonWs(line: string): number {
+  let e = line.length - 1;
+  while (e >= 0 && isWs(line[e])) e--;
+  return e;
+}
+
+/**
+ * Joins backslash-continued lines, tracking the starting line number. The
+ * continuation check is done with a linear scan rather than a `/\\\s*$/`
+ * regex, which can backtrack quadratically (CodeQL js/polynomial-redos).
+ */
 function logicalLines(src: string): Array<{ text: string; line: number }> {
   const raw = src.replace(/^﻿/, '').split(/\r?\n/);
   const out: Array<{ text: string; line: number }> = [];
@@ -17,8 +31,10 @@ function logicalLines(src: string): Array<{ text: string; line: number }> {
   for (let i = 0; i < raw.length; i++) {
     const line = raw[i];
     if (buffer === '') startLine = i + 1;
-    if (CONT.test(line)) {
-      buffer += line.replace(CONT, ' ');
+    const last = lastNonWs(line);
+    if (last >= 0 && line[last] === '\\') {
+      // Drop the trailing backslash (and any whitespace after it), join with a space.
+      buffer += line.slice(0, last) + ' ';
     } else {
       buffer += line;
       out.push({ text: buffer, line: startLine });
@@ -29,17 +45,43 @@ function logicalLines(src: string): Array<{ text: string; line: number }> {
   return out;
 }
 
-/** Splits `KEY=val KEY2="a b"` into pairs, respecting quotes. */
+/**
+ * Splits `KEY=val KEY2="a b"` into pairs, respecting quotes. Implemented as a
+ * single linear scan (no backtracking regex over the uncontrolled file text).
+ */
 function parsePairs(s: string): Array<{ key: string; value: string }> {
   const pairs: Array<{ key: string; value: string }> = [];
-  const re = /([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|\S+)/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(s)) !== null) {
-    let value = m[2];
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
+  const n = s.length;
+  let i = 0;
+  while (i < n) {
+    while (i < n && isWs(s[i])) i++;
+    if (i >= n) break;
+    if (!isKeyStart(s[i])) {
+      while (i < n && !isWs(s[i])) i++; // skip an unrecognized token
+      continue;
     }
-    pairs.push({ key: m[1], value });
+    const keyStart = i;
+    while (i < n && isKeyPart(s[i])) i++;
+    const key = s.slice(keyStart, i);
+    if (s[i] !== '=') {
+      while (i < n && !isWs(s[i])) i++; // not a KEY=value token; skip it
+      continue;
+    }
+    i++; // consume '='
+    let value: string;
+    const quote = s[i];
+    if (quote === '"' || quote === "'") {
+      i++;
+      const vs = i;
+      while (i < n && s[i] !== quote) i++;
+      value = s.slice(vs, i);
+      if (i < n) i++; // consume closing quote
+    } else {
+      const vs = i;
+      while (i < n && !isWs(s[i])) i++;
+      value = s.slice(vs, i);
+    }
+    pairs.push({ key, value });
   }
   return pairs;
 }
@@ -52,10 +94,18 @@ export function parseDockerfile(content: string, file: string): AdapterVar[] {
     const trimmed = text.trim();
     if (trimmed === '' || trimmed.startsWith('#')) continue;
 
-    const instr = /^(\w+)\s+(.*)$/.exec(trimmed);
-    if (!instr) continue;
-    const keyword = instr[1].toUpperCase();
-    const args = instr[2].trim();
+    // Split the instruction keyword from its arguments at the first whitespace
+    // (linear scan; avoids a `/^(\w+)\s+(.*)$/` regex over uncontrolled input).
+    let sp = -1;
+    for (let k = 0; k < trimmed.length; k++) {
+      if (isWs(trimmed[k])) {
+        sp = k;
+        break;
+      }
+    }
+    if (sp === -1) continue;
+    const keyword = trimmed.slice(0, sp).toUpperCase();
+    const args = trimmed.slice(sp + 1).trim();
     const location = { file, line };
 
     if (keyword === 'ENV') {
