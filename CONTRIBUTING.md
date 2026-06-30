@@ -1,6 +1,6 @@
-# Contributing to env-drift
+# Contributing to envcanary
 
-Thanks for your interest in improving env-drift. This document explains how to
+Thanks for your interest in improving envcanary. This document explains how to
 report issues, propose changes, and get a pull request merged.
 
 ## Table of Contents
@@ -35,12 +35,12 @@ through the channels listed there.
 
 Open a GitHub issue with:
 
-- env-drift and Node.js versions.
+- envcanary and Node.js versions.
 - A **minimal** reproduction: the smallest contract, `.env` fixture, or source
   snippet that shows the problem.
 - What you expected vs what happened.
 
-**Never paste real secret values** into an issue. Redact them — env-drift is a
+**Never paste real secret values** into an issue. Redact them — envcanary is a
 tool that helps you avoid exactly that.
 
 ## Proposing a Change
@@ -53,8 +53,8 @@ downstream suppressions and dashboards.
 ## Development Setup
 
 ```bash
-git clone https://github.com/cwit-ae/env-drift.git
-cd env-drift
+git clone https://github.com/cwit-ae/envcanary.git
+cd envcanary
 npm install            # dev dependencies only; runtime deps are zero
 npm run lint           # tsc --noEmit
 npm test               # jest

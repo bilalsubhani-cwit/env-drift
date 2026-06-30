@@ -1,5 +1,5 @@
 /**
- * env-drift — a configuration contract, provenance and drift-detection engine.
+ * envcanary — a configuration contract, provenance and drift-detection engine.
  *
  * Know what configuration your application expects, where it comes from, what
  * actually reached the workload, and whether the difference is safe.
@@ -8,7 +8,7 @@
  *
  * @example
  * ```ts
- * import { defineConfig, variable, checkEnvironment } from 'env-drift';
+ * import { defineConfig, variable, checkEnvironment } from 'envcanary';
  *
  * const contract = defineConfig({
  *   contractVersion: 1,

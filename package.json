@@ -1,5 +1,5 @@
 {
-  "name": "env-drift",
+  "name": "envcanary",
   "version": "1.0.0",
   "description": "Configuration contract, provenance and drift-detection engine for applications and CI/CD. Discovers env-var usage in code, validates it against a typed contract, and detects missing/extra/unsafe configuration. Secret-safe, zero dependencies, fully offline.",
   "main": "dist/cjs/index.js",
@@ -7,7 +7,7 @@
   "types": "dist/types/index.d.ts",
   "sideEffects": false,
   "bin": {
-    "env-drift": "dist/cjs/cli.js"
+    "envcanary": "dist/cjs/cli.js"
   },
   "exports": {
     ".": {
@@ -55,12 +55,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cwit-ae/env-drift.git"
+    "url": "git+https://github.com/cwit-ae/envcanary.git"
   },
   "bugs": {
-    "url": "https://github.com/cwit-ae/env-drift/issues"
+    "url": "https://github.com/cwit-ae/envcanary/issues"
   },
-  "homepage": "https://github.com/cwit-ae/env-drift#readme",
+  "homepage": "https://github.com/cwit-ae/envcanary#readme",
   "engines": {
     "node": ">=18"
   },

@@ -7,5 +7,5 @@ coverage/
 .env.*
 !.env.example
 PUBLISHING.md
-env-drift-*.tgz
+envcanary-*.tgz
 .claude/

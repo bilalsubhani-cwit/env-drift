@@ -2,11 +2,11 @@
 
 ## Our Pledge
 
-We as members, contributors, and maintainers pledge to make participation in the env-drift community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, colour, religion, or sexual identity and orientation.
+We as members, contributors, and maintainers pledge to make participation in the envcanary community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, colour, religion, or sexual identity and orientation.
 
 We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community.
 
-env-drift exists to help teams keep their configuration safe, reviewable, and free of secret leaks. We hold ourselves to a matching standard of care: this repository — its issues, pull requests, discussions, and code review — should be a place where people can ask questions and share reproductions without fear, and where no one's private information or secrets are ever exposed.
+envcanary exists to help teams keep their configuration safe, reviewable, and free of secret leaks. We hold ourselves to a matching standard of care: this repository — its issues, pull requests, discussions, and code review — should be a place where people can ask questions and share reproductions without fear, and where no one's private information or secrets are ever exposed.
 
 ---
 
@@ -63,8 +63,8 @@ This Code of Conduct applies within all community spaces — the GitHub reposito
 
 If you experience or witness behaviour that violates this Code of Conduct, please report it through one of the following channels:
 
-1. **Preferred — private GitHub Security Advisory:** open a draft advisory at <https://github.com/cwit-ae/env-drift/security/advisories/new> and mark it as a Code of Conduct concern in the title. Only the maintainers see the report.
-2. **Email the maintainers privately.** Refer to the maintainer contact listed on the [npm page for `env-drift`](https://www.npmjs.com/package/env-drift).
+1. **Preferred — private GitHub Security Advisory:** open a draft advisory at <https://github.com/cwit-ae/envcanary/security/advisories/new> and mark it as a Code of Conduct concern in the title. Only the maintainers see the report.
+2. **Email the maintainers privately.** Refer to the maintainer contact listed on the [npm page for `envcanary`](https://www.npmjs.com/package/envcanary).
 
 When you submit a report, please include — as much as is practical:
 

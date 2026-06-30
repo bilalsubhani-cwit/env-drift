@@ -109,7 +109,7 @@ export function loadEnvironment(opts: LoadOptions): Readonly<Record<string, Load
   if (issues.length > 0) {
     if (action === 'error') throw new EnvironmentValidationError(issues);
     if (action === 'warn') {
-      for (const i of issues) console.warn(`[env-drift] ${i}`);
+      for (const i of issues) console.warn(`[envcanary] ${i}`);
     }
   }
 

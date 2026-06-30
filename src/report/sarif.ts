@@ -66,8 +66,8 @@ export function renderSarif(report: DriftReport, version = '1.0.0'): string {
       {
         tool: {
           driver: {
-            name: 'env-drift',
-            informationUri: 'https://github.com/cwit-ae/env-drift',
+            name: 'envcanary',
+            informationUri: 'https://github.com/cwit-ae/envcanary',
             version,
             rules,
           },

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * The env-drift CLI. Argument parsing is hand-rolled to preserve the package's
+ * The envcanary CLI. Argument parsing is hand-rolled to preserve the package's
  * zero-runtime-dependency guarantee.
  *
  * Commands:
- *   env-drift init                         scaffold a starter contract
- *   env-drift scan                         scan code/files, no provider access
- *   env-drift check --env <name>           validate an environment vs the contract
- *   env-drift diff <a> <b>                  policy-aware comparison of two envs
- *   env-drift explain <VAR> --env <name>   show provenance & policy for one var
- *   env-drift generate <example|types|docs> emit an artifact from the contract
- *   env-drift doctor                       sanity-check the setup
+ *   envcanary init                         scaffold a starter contract
+ *   envcanary scan                         scan code/files, no provider access
+ *   envcanary check --env <name>           validate an environment vs the contract
+ *   envcanary diff <a> <b>                  policy-aware comparison of two envs
+ *   envcanary explain <VAR> --env <name>   show provenance & policy for one var
+ *   envcanary generate <example|types|docs> emit an artifact from the contract
+ *   envcanary doctor                       sanity-check the setup
  *
  * Exit codes: 0 ok · 1 policy violations · 2 invalid contract/parse · 4 unknown.
  */
@@ -80,18 +80,18 @@ function err(s: string): void {
   process.stderr.write(s + '\n');
 }
 
-const USAGE = `env-drift — configuration drift detection
+const USAGE = `envcanary — configuration drift detection
 
 Usage:
-  env-drift init                          Scaffold a starter contract
-  env-drift scan [--format f]             Scan code & .env files against the contract
-  env-drift check --env <name> [--file f] Validate an environment against the contract
-  env-drift diff <envA> <envB>            Policy-aware comparison of two environments
-  env-drift explain <VAR> --env <name>    Show provenance and policy for one variable
-  env-drift generate <example|types|docs> Emit an artifact from the contract
-  env-drift manifest write --env <name>   Write a build manifest (public-var fingerprints)
-  env-drift manifest check --env <name>   Detect build/runtime drift (ENV009) vs a manifest
-  env-drift doctor                        Sanity-check the project setup
+  envcanary init                          Scaffold a starter contract
+  envcanary scan [--format f]             Scan code & .env files against the contract
+  envcanary check --env <name> [--file f] Validate an environment against the contract
+  envcanary diff <envA> <envB>            Policy-aware comparison of two environments
+  envcanary explain <VAR> --env <name>    Show provenance and policy for one variable
+  envcanary generate <example|types|docs> Emit an artifact from the contract
+  envcanary manifest write --env <name>   Write a build manifest (public-var fingerprints)
+  envcanary manifest check --env <name>   Detect build/runtime drift (ENV009) vs a manifest
+  envcanary doctor                        Sanity-check the project setup
 
 Options:
   --config <path>   Path to the contract (default: search cwd)
@@ -144,8 +144,8 @@ function emit(report: DriftReport, format: ReportFormat): void {
 
 // --- commands ---------------------------------------------------------------
 
-const STARTER = `// env-drift contract — see https://github.com/cwit-ae/env-drift
-const { defineConfig, variable } = require('env-drift');
+const STARTER = `// envcanary contract — see https://github.com/cwit-ae/envcanary
+const { defineConfig, variable } = require('envcanary');
 
 module.exports = defineConfig({
   contractVersion: 1,
@@ -170,13 +170,13 @@ module.exports = defineConfig({
 `;
 
 function cmdInit(args: Args): number {
-  const target = resolve(process.cwd(), 'env-drift.config.js');
+  const target = resolve(process.cwd(), 'envcanary.config.js');
   if (existsSync(target) || findContract(process.cwd())) {
     err('error: a contract already exists in this directory.');
     return 2;
   }
   writeFileSync(target, STARTER, 'utf8');
-  out(`Created ${basename(target)}. Edit it, then run \`env-drift scan\`.`);
+  out(`Created ${basename(target)}. Edit it, then run \`envcanary scan\`.`);
   return 0;
 }
 
@@ -263,7 +263,7 @@ async function cmdDiff(args: Args): Promise<number> {
   const { contract } = await getContract(args);
   const [, a, b] = args._;
   if (!a || !b) {
-    err('error: usage: env-drift diff <envA> <envB> [--fileA f] [--fileB f]');
+    err('error: usage: envcanary diff <envA> <envB> [--fileA f] [--fileB f]');
     return 2;
   }
   const fileA = flagStr(args, 'fileA');
@@ -326,7 +326,7 @@ async function cmdManifest(args: Args): Promise<number> {
     return reportExitCode(report);
   }
 
-  err('error: usage: env-drift manifest <write|check> --env <name> [...]');
+  err('error: usage: envcanary manifest <write|check> --env <name> [...]');
   return 2;
 }
 
@@ -334,7 +334,7 @@ async function cmdExplain(args: Args): Promise<number> {
   const { contract, file } = await getContract(args);
   const name = args._[1];
   if (!name) {
-    err('error: usage: env-drift explain <VAR> --env <name>');
+    err('error: usage: envcanary explain <VAR> --env <name>');
     return 2;
   }
   const def = contract.variables[name];
@@ -384,7 +384,7 @@ async function cmdGenerate(args: Args): Promise<number> {
   else if (what === 'types') text = generateTypes(contract);
   else if (what === 'docs') text = generateDocs(contract);
   else {
-    err('error: usage: env-drift generate <example|types|docs> [--out file]');
+    err('error: usage: envcanary generate <example|types|docs> [--out file]');
     return 2;
   }
   const outFile = flagStr(args, 'out');
@@ -399,9 +399,9 @@ async function cmdGenerate(args: Args): Promise<number> {
 
 async function cmdDoctor(args: Args): Promise<number> {
   const contractFile = findContract(process.cwd());
-  out('env-drift doctor');
+  out('envcanary doctor');
   out('');
-  out(`  contract:        ${contractFile ?? 'NOT FOUND (run `env-drift init`)'}`);
+  out(`  contract:        ${contractFile ?? 'NOT FOUND (run `envcanary init`)'}`);
   if (contractFile) {
     try {
       const { contract } = await loadContract(contractFile);
@@ -417,7 +417,7 @@ async function cmdDoctor(args: Args): Promise<number> {
   out(`  .env files:      ${envFiles.length}`);
   out(`  rules available: ${Object.keys(CODES).length} (ENV001–ENV016)`);
   out('');
-  out('  Tip: env-drift never prints secret values. --format json/sarif for CI.');
+  out('  Tip: envcanary never prints secret values. --format json/sarif for CI.');
   return 0;
 }
 

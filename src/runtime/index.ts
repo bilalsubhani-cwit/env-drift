@@ -1,10 +1,10 @@
 /**
- * Runtime entry point: `env-drift/runtime`.
+ * Runtime entry point: `envcanary/runtime`.
  *
  * @example
  * ```ts
- * import { loadEnvironment } from 'env-drift/runtime';
- * import contract from '../env-drift.config';
+ * import { loadEnvironment } from 'envcanary/runtime';
+ * import contract from '../envcanary.config';
  *
  * export const env = loadEnvironment({
  *   contract,

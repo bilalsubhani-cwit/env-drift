@@ -43,7 +43,7 @@ export interface CheckInput {
   /** Optional code references, enabling unused/undeclared-in-code checks. */
   references?: CodeReference[];
   /**
-   * Optional parsed `.env` files. When supplied, env-drift can report
+   * Optional parsed `.env` files. When supplied, envcanary can report
    * duplicate keys (`ENV005`) and precedence shadowing (`ENV006`), which the
    * flattened `values` map cannot express.
    */

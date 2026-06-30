@@ -7,7 +7,7 @@
  *
  * @example
  * ```ts
- * import { defineConfig, variable } from 'env-drift';
+ * import { defineConfig, variable } from 'envcanary';
  *
  * export default defineConfig({
  *   contractVersion: 1,

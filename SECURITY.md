@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-env-drift provides security updates for the latest minor release on the `1.x`
+envcanary provides security updates for the latest minor release on the `1.x`
 line.
 
 | Version | Supported          |
@@ -15,11 +15,11 @@ before opening a security report — the issue may already be resolved.
 
 ## Why this package takes security seriously
 
-env-drift inspects environment variables, `.env` files, and (optionally,
+envcanary inspects environment variables, `.env` files, and (optionally,
 through read-only providers) deployment configuration. That means it routinely
 sits next to **secret material**. The package is designed so that secrets are
 redacted by default and never written to snapshots, reports, or CI artifacts.
-A vulnerability that causes env-drift to **leak a secret value** — into stdout,
+A vulnerability that causes envcanary to **leak a secret value** — into stdout,
 a JSON/SARIF report, a snapshot, or an error message — is treated as the
 highest-severity class of bug.
 
@@ -32,17 +32,17 @@ which can give an attacker time to exploit the issue before users have updated.
 Use one of the following private channels instead:
 
 1. **Preferred — GitHub Security Advisories:** open a draft advisory at
-   <https://github.com/cwit-ae/env-drift/security/advisories/new>. Only the
+   <https://github.com/cwit-ae/envcanary/security/advisories/new>. Only the
    maintainers see the report. GitHub provides a private fork for coordinated
    patch development.
 2. Email the maintainers privately. Refer to the maintainer contact listed on
-   the [npm page for `env-drift`](https://www.npmjs.com/package/env-drift).
+   the [npm page for `envcanary`](https://www.npmjs.com/package/envcanary).
 
 When you submit a report, please include — as much as is practical:
 
 - A clear description of the issue and the impact you believe it has.
 - Steps to reproduce, including a minimal contract, `.env` fixture, and the
-  exact `env-drift` + Node.js versions.
+  exact `envcanary` + Node.js versions.
 - A minimal proof-of-concept (a few lines of TypeScript or JavaScript, or a
   single CLI invocation).
 - Whether you have disclosed the issue elsewhere, and if so, where.
@@ -70,7 +70,7 @@ issues using the standard templates instead:
 - A missing framework or platform adapter (a discovery source we do not yet
   support).
 - False positives or false negatives in drift detection on benign input.
-- Issues in transitive dependencies of consumers (env-drift itself ships zero
+- Issues in transitive dependencies of consumers (envcanary itself ships zero
   runtime dependencies).
 
 ## Disclosure Process
@@ -100,4 +100,4 @@ low-risk issues, longer if the fix requires substantial rework. If you intend
 to disclose publicly, please tell us in advance so the release and advisory can
 be coordinated with your timeline.
 
-Thank you for helping keep env-drift and its users safe.
+Thank you for helping keep envcanary and its users safe.

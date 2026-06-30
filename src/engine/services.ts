@@ -1,6 +1,6 @@
 /**
  * Monorepo / multi-service support. When the contract declares `services` with
- * `consumers` / `producers` per variable, env-drift scans each service's code
+ * `consumers` / `producers` per variable, envcanary scans each service's code
  * separately and reports cross-service drift:
  *
  * - A declared consumer that never references the variable (`ENV011`), or — for

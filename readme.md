@@ -5,32 +5,32 @@
   npm downloads, bundlephobia min+gzip, CI status, CodeQL status.
 -->
 <p align="center">
-  <a href="https://www.npmjs.com/package/env-drift"><img src="https://img.shields.io/npm/v/env-drift?style=flat-square&color=1a1a2e" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/envcanary"><img src="https://img.shields.io/npm/v/envcanary?style=flat-square&color=1a1a2e" alt="npm version" /></a>
   <img src="https://img.shields.io/badge/dependencies-zero-1a1a2e?style=flat-square" alt="zero dependencies" />
   <img src="https://img.shields.io/badge/node-%3E%3D18-1a1a2e?style=flat-square" alt="node >= 18" />
   <img src="https://img.shields.io/badge/license-MIT-1a1a2e?style=flat-square" alt="MIT license" />
 </p>
 
-<h1 align="center">env-drift</h1>
+<h1 align="center">envcanary</h1>
 
 <p align="center">
   <strong>The CI gate for your environment configuration. It catches drift across your code, <code>.env</code> files, Docker, and builds — a missing key, a staging URL in production, a secret on a <code>NEXT_PUBLIC_</code> prefix — <em>before</em> it ships.</strong>
 </p>
 
 <p align="center">
-  Not another env loader or runtime validator: env-drift checks your config against a typed, reviewable contract <em>before runtime</em>, then gates violations in CI.<br/>
+  Not another env loader or runtime validator: envcanary checks your config against a typed, reviewable contract <em>before runtime</em>, then gates violations in CI.<br/>
   Zero runtime dependencies. Fully offline. Secret-safe by default — values are redacted everywhere.
 </p>
 
 <p align="center">
   <strong>Who it's for:</strong> teams running more than one environment or service, whose config lives in more than one place
   (<code>.env</code> + Docker + CI + build) — and who've been burned by a config-drift incident at least once.<br/>
-  If you have one <code>.env</code> and one process, a runtime validator is the lighter choice and env-drift is overkill.
+  If you have one <code>.env</code> and one process, a runtime validator is the lighter choice and envcanary is overkill.
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
-  <a href="#how-env-drift-relates-to-the-tools-you-already-use">How it compares</a> ·
+  <a href="#how-envcanary-relates-to-the-tools-you-already-use">How it compares</a> ·
   <a href="#the-contract">Contract</a> ·
   <a href="#drift-taxonomy">Drift codes</a> ·
   <a href="#cli">CLI</a> ·
@@ -40,17 +40,17 @@
 ---
 
 <p align="center">
-  <strong>Why env-drift</strong>
+  <strong>Why envcanary</strong>
 </p>
 
-- **A typed contract, not another `.env` diff.** You declare what variables exist, where they're required, whether they're secrets, whether they're client- or server-side, and which environment differences are intentional. env-drift checks reality against that contract — code, `.env` files, and the running process.
+- **A typed contract, not another `.env` diff.** You declare what variables exist, where they're required, whether they're secrets, whether they're client- or server-side, and which environment differences are intentional. envcanary checks reality against that contract — code, `.env` files, and the running process.
 - **Static discovery across your code.** A dependency-free scanner finds `process.env.X`, `process.env["X"]`, `import.meta.env.X`, `Bun.env.X`, `Deno.env.get("X")`, and `const { X } = process.env`. Computed access (`process.env[prefix + key]`) is reported as *uncertain* rather than silently missed.
-- **Environment-aware rules.** "It's a valid URL" isn't enough. env-drift knows that `http://localhost` is unacceptable in production, that `DEBUG` must be off, that a secret must not wear a `NEXT_PUBLIC_` prefix, and that staging and production databases must not be the same.
+- **Environment-aware rules.** "It's a valid URL" isn't enough. envcanary knows that `http://localhost` is unacceptable in production, that `DEBUG` must be off, that a secret must not wear a `NEXT_PUBLIC_` prefix, and that staging and production databases must not be the same.
 - **Secret-safe by construction.** Values classified as secrets are redacted in every report, snapshot, and error message. The package is designed so a secret never appears in cleartext — see [Secret-safe design](#secret-safe-design).
 - **Zero dependencies, fully offline.** The dotenv parser and the code scanner are hand-rolled; there is no Babel, no TypeScript loader, no `dotenv` at runtime. Stable `ENV001…ENV016` rule codes and `terminal` / `json` / `sarif` output drop straight into CI.
 
 ```ts
-import { defineConfig, variable, checkEnvironment } from "env-drift";
+import { defineConfig, variable, checkEnvironment } from "envcanary";
 
 const contract = defineConfig({
   contractVersion: 1,
@@ -70,7 +70,7 @@ checkEnvironment({ contract, environment: "production", values: process.env }).s
 ## Table of Contents
 
 - [Overview](#overview)
-- [How env-drift relates to the tools you already use](#how-env-drift-relates-to-the-tools-you-already-use)
+- [How envcanary relates to the tools you already use](#how-envcanary-relates-to-the-tools-you-already-use)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [The Contract](#the-contract)
@@ -94,17 +94,17 @@ checkEnvironment({ contract, environment: "production", values: process.env }).s
 
 **Environment drift** is an unintended difference between the configuration an application *declares*, the configuration its code *consumes*, the values supplied by deployment systems, and the configuration actually available to the running process. Drift is not "dev and prod differ" — they're *expected* to differ. Drift is when those differences violate an explicit contract or operational policy.
 
-The [Twelve-Factor](https://12factor.net/config) methodology stores config in the environment, but modern apps receive it from `.env` files, shell variables, CI/CD systems, Docker, Kubernetes, systemd, hosting providers, and secret managers — each with different precedence and lifecycle rules. env-drift gives you a single, reviewable place to declare what's expected and a fast, offline engine to detect where reality has drifted from it.
+The [Twelve-Factor](https://12factor.net/config) methodology stores config in the environment, but modern apps receive it from `.env` files, shell variables, CI/CD systems, Docker, Kubernetes, systemd, hosting providers, and secret managers — each with different precedence and lifecycle rules. envcanary gives you a single, reviewable place to declare what's expected and a fast, offline engine to detect where reality has drifted from it.
 
 The **1.0** release covers: the typed contract, the dotenv parser, the static code scanner, missing/extra/invalid/unsafe detection, `.env` precedence and shadowing, secret-safe redaction, the runtime validator, Docker/Compose and Next.js/Vite build-manifest drift, monorepo cross-service checks, and `terminal` / `json` / `sarif` output. Read-only providers (GitHub/GitLab/Vercel/Vault) and Kubernetes/systemd runtime drift are on the [roadmap](#roadmap).
 
-## How env-drift relates to the tools you already use
+## How envcanary relates to the tools you already use
 
-**env-drift is not a replacement for `dotenv`, `envalid`, `znv`, T3 Env, or `convict`** — it does a different job, and it composes with them. Those tools *load* and/or *validate* configuration **at runtime, in one process**. env-drift *detects drift* **before runtime, across your code and deployment surfaces** — and gates it in CI. You can keep validating with T3 Env or envalid in your app and add env-drift as the CI check that catches the missing key, the staging URL in production, or the secret on a `NEXT_PUBLIC_` prefix before deploy.
+**envcanary is not a replacement for `dotenv`, `envalid`, `znv`, T3 Env, or `convict`** — it does a different job, and it composes with them. Those tools *load* and/or *validate* configuration **at runtime, in one process**. envcanary *detects drift* **before runtime, across your code and deployment surfaces** — and gates it in CI. You can keep validating with T3 Env or envalid in your app and add envcanary as the CI check that catches the missing key, the staging URL in production, or the secret on a `NEXT_PUBLIC_` prefix before deploy.
 
-The trade-off is explicit: env-drift asks you to maintain a **contract file**. If all you want is co-located runtime validation, a loader/validator is the lighter choice. env-drift earns its keep when configuration spans multiple environments, services, and sources (`.env` + Docker + CI + build) and you want a reviewable, drift-gating contract over all of it.
+The trade-off is explicit: envcanary asks you to maintain a **contract file**. If all you want is co-located runtime validation, a loader/validator is the lighter choice. envcanary earns its keep when configuration spans multiple environments, services, and sources (`.env` + Docker + CI + build) and you want a reviewable, drift-gating contract over all of it.
 
-| Capability | env-drift | loaders (`dotenv`, `dotenv-flow`) | validators (`envalid`, `znv`, T3 Env) | `convict` |
+| Capability | envcanary | loaders (`dotenv`, `dotenv-flow`) | validators (`envalid`, `znv`, T3 Env) | `convict` |
 |---|---|---|---|---|
 | Provides config to your app at runtime | ❌ (by design) | ✅ (raw) | ✅ (validated) | ✅ (validated) |
 | Runtime typed validation | ✅ | ❌ | ✅ | ✅ |
@@ -118,16 +118,16 @@ The trade-off is explicit: env-drift asks you to maintain a **contract file**. I
 
 The bolded rows are the wedge: as far as we know, no widely-used free package does **static env-usage discovery + a reviewable contract + CI drift gating with SARIF and secret-safe reporting**. If you find one, please open an issue — we'll update this table.
 
-<sub>¹ `convict` masks values marked `sensitive: true` as `[Sensitive]` in `config.toString()`. env-drift redacts secrets across every output (terminal/JSON/SARIF/errors/diff), in comparisons, and in the runtime `SecretValue` wrapper.</sub>
+<sub>¹ `convict` masks values marked `sensitive: true` as `[Sensitive]` in `config.toString()`. envcanary redacts secrets across every output (terminal/JSON/SARIF/errors/diff), in comparisons, and in the runtime `SecretValue` wrapper.</sub>
 
 <sub>Comparison verified against each package's documentation in June 2026 — [envalid](https://github.com/af/envalid), [@t3-oss/env-core](https://env.t3.gg/docs/core), [znv](https://github.com/lostfictions/znv), [convict](https://github.com/mozilla/node-convict). T3 Env's docs state it feeds env vars "directly to the validator … rather than scanning your source code"; none of these tools perform static code discovery, multi-source drift detection, or SARIF output. Found an inaccuracy? Open an issue.</sub>
 
 ## Installation
 
 ```bash
-npm install --save-dev env-drift
+npm install --save-dev envcanary
 # or, to use the runtime validator in your app:
-npm install env-drift
+npm install envcanary
 ```
 
 Requires Node.js ≥ 18. Ships ESM and CommonJS builds plus type declarations.
@@ -136,24 +136,24 @@ Requires Node.js ≥ 18. Ships ESM and CommonJS builds plus type declarations.
 
 ```bash
 # 1. Scaffold a contract
-npx env-drift init
+npx envcanary init
 
-# 2. Edit env-drift.config.js, then scan your code + .env files
-npx env-drift scan --env production
+# 2. Edit envcanary.config.js, then scan your code + .env files
+npx envcanary scan --env production
 
 # 3. Validate a specific environment file
-npx env-drift check --env production --file .env.production
+npx envcanary check --env production --file .env.production
 
 # 4. Generate a .env.example, types, or docs from the contract
-npx env-drift generate example --out .env.example
+npx envcanary generate example --out .env.example
 ```
 
 ## The Contract
 
-The contract is committed and reviewed in code — not inferred from `.env.example`. Author it in `env-drift.config.js` (or `.cjs` / `.mjs` / `.json`):
+The contract is committed and reviewed in code — not inferred from `.env.example`. Author it in `envcanary.config.js` (or `.cjs` / `.mjs` / `.json`):
 
 ```js
-const { defineConfig, variable } = require("env-drift");
+const { defineConfig, variable } = require("envcanary");
 
 module.exports = defineConfig({
   contractVersion: 1,
@@ -204,13 +204,13 @@ module.exports = defineConfig({
 });
 ```
 
-> **TypeScript configs.** To keep the zero-dependency guarantee, env-drift does not load `.ts` configs directly (that would require a TS runtime loader). Author the contract in JS/JSON, or compile your TS config first. You still get full editor types because `defineConfig` and `variable` are fully typed.
+> **TypeScript configs.** To keep the zero-dependency guarantee, envcanary does not load `.ts` configs directly (that would require a TS runtime loader). Author the contract in JS/JSON, or compile your TS config first. You still get full editor types because `defineConfig` and `variable` are fully typed.
 
 Every variable supports `type`, `requiredIn` / `forbiddenIn`, `secret`, `exposure`, `phase`, `default`, `description`, `owner`, `severity`, type-specific constraints (`min`/`max`/`minLength`/`pattern`/`values`/`allowedProtocols`/`forbiddenValues`), environment-specific `rules`, `differences`, `deprecated`, `deploymentEffect`, `rotation`, and monorepo `consumers` / `producers`.
 
 ## Drift Taxonomy
 
-env-drift emits **stable rule identifiers** so teams can suppress, trend, and gate CI on specific drift classes. These codes do not change across minor versions, and they appear in SARIF output.
+envcanary emits **stable rule identifiers** so teams can suppress, trend, and gate CI on specific drift classes. These codes do not change across minor versions, and they appear in SARIF output.
 
 | Code | Drift type | Example |
 |---|---|---|
@@ -233,7 +233,7 @@ env-drift emits **stable rule identifiers** so teams can suppress, trend, and ga
 
 A provider or scan limitation is never reported as "no drift" — it surfaces as `ENV014` / `UNKNOWN` (exit code `4`).
 
-> env-drift implements `ENV001`–`ENV011`, `ENV013`, `ENV014`, and `ENV016` today (including `ENV009` build/runtime drift via the Next.js/Vite build manifest, and `ENV013` service-scope checks in monorepos). The remaining codes (`ENV012`, `ENV015`) are reserved with stable identifiers and land with their adapters — see the [roadmap](#roadmap).
+> envcanary implements `ENV001`–`ENV011`, `ENV013`, `ENV014`, and `ENV016` today (including `ENV009` build/runtime drift via the Next.js/Vite build manifest, and `ENV013` service-scope checks in monorepos). The remaining codes (`ENV012`, `ENV015`) are reserved with stable identifiers and land with their adapters — see the [roadmap](#roadmap).
 
 ## Static Discovery
 
@@ -256,11 +256,11 @@ ENV014  dynamic environment access via process.env[...]; static
         completeness cannot be guaranteed   (src/config.ts:18:11)
 ```
 
-When dynamic access exists in a file, env-drift will not claim a variable is *unused* (`ENV003`) — it can't prove that statically, and it says so.
+When dynamic access exists in a file, envcanary will not claim a variable is *unused* (`ENV003`) — it can't prove that statically, and it says so.
 
 ## Intentional vs Accidental Differences
 
-A naive tool reports `DATABASE_URL differs between staging and production` — which is useless, because it *should* differ. env-drift only reports differences that violate a declared policy:
+A naive tool reports `DATABASE_URL differs between staging and production` — which is useless, because it *should* differ. envcanary only reports differences that violate a declared policy:
 
 ```js
 DATABASE_URL: variable.url({
@@ -279,7 +279,7 @@ Values are compared without being revealed; secret values never appear in the di
 
 ## Adapters
 
-env-drift understands more than `.env` files. Adapters discover configuration from deployment systems and add their own checks — all still zero-dependency (the Compose YAML is parsed by an in-house subset parser).
+envcanary understands more than `.env` files. Adapters discover configuration from deployment systems and add their own checks — all still zero-dependency (the Compose YAML is parsed by an in-house subset parser).
 
 ### Docker & Compose
 
@@ -299,10 +299,10 @@ Write a manifest at build time, check it at deploy time:
 
 ```bash
 # at build (records a fingerprint of each public value + the build's environment)
-env-drift manifest write --env staging --out build-manifest.json
+envcanary manifest write --env staging --out build-manifest.json
 
 # at deploy (compares the manifest against the production target)
-env-drift manifest check --env production --manifest build-manifest.json
+envcanary manifest check --env production --manifest build-manifest.json
 ```
 
 ```text
@@ -315,7 +315,7 @@ Manifests store only fingerprints, never raw values.
 
 ## Monorepos & Multi-service
 
-Declare your services and scope variables to the ones that use them. env-drift scans each service's code separately and reports cross-service drift.
+Declare your services and scope variables to the ones that use them. envcanary scans each service's code separately and reports cross-service drift.
 
 ```js
 module.exports = defineConfig({
@@ -334,7 +334,7 @@ module.exports = defineConfig({
 });
 ```
 
-`env-drift scan` then catches:
+`envcanary scan` then catches:
 
 - **`ENV011`** — a declared consumer that never references the variable, or a service that references a variable it isn't a declared consumer of.
 - **`ENV013`** — a service granted a **secret it never uses** ("reduce its scope"). Over-shared secrets make rotation and compromise-attribution harder.
@@ -346,22 +346,22 @@ ENV011  service "worker" is a declared consumer of "QUEUE_NAME" but never
         references it
 ```
 
-A service that uses **dynamic** env access is never accused of *not* using a variable — env-drift can't prove that statically, and says so. Use `--service <name>` to scan a single service, and the runtime loader's `service` option restricts the loaded env to that service's variables.
+A service that uses **dynamic** env access is never accused of *not* using a variable — envcanary can't prove that statically, and says so. Use `--service <name>` to scan a single service, and the runtime loader's `service` option restricts the loaded env to that service's variables.
 
 ## Secret-safe Design
 
-env-drift routinely sits next to secret material, so security is structural, not optional:
+envcanary routinely sits next to secret material, so security is structural, not optional:
 
 - **Redacted by default.** Anything marked `secret: true` (and every `variable.secret(...)`) is shown as `••••••••` in every report, snapshot, and error. The engine only ever produces redacted messages — values are never interpolated into findings.
 - **URL credentials are stripped** even for non-secret values: `postgres://user:pw@host/db` → `postgres://***:***@host/db`.
-- **No raw values in comparisons.** In-memory comparison returns only `same` / `different` / `unknown`. When a persistent comparison token is unavoidable, env-drift uses a **keyed HMAC** (`fingerprint(value, key)`), never a bare hash of a low-entropy secret.
+- **No raw values in comparisons.** In-memory comparison returns only `same` / `different` / `unknown`. When a persistent comparison token is unavoidable, envcanary uses a **keyed HMAC** (`fingerprint(value, key)`), never a bare hash of a low-entropy secret.
 - **`SecretValue` wrapper.** The runtime loader wraps secrets so they refuse to reveal themselves through `String()`, `JSON.stringify`, `console.log`, or `util.inspect`. The raw value is reachable only via an explicit `.reveal()`.
-- **No exfiltration commands.** There is deliberately no `env-drift export production`. The CLI cannot print secret values.
+- **No exfiltration commands.** There is deliberately no `envcanary export production`. The CLI cannot print secret values.
 - **Messages never echo secrets.** Validation messages render a secret value as `<redacted>` (and strip URL credentials / redact secret hostnames) — so an invalid secret can never leak through a finding, a report, a SARIF upload, or the runtime loader's error. Checking the live `process.env` does not enumerate its undeclared key names, which could otherwise reveal what secrets exist.
 
 ### Hardening (DoS-resistant by design)
 
-env-drift is built to stay bounded on hostile input — no catastrophic backtracking, no symlink loops, no unbounded memory:
+envcanary is built to stay bounded on hostile input — no catastrophic backtracking, no symlink loops, no unbounded memory:
 
 - The filesystem walk **never follows symlinks** and is capped by depth, file count, and a 5 MB per-file limit.
 - Regex validation input is **capped at 4 KB** (ReDoS defence for user-supplied `pattern`s).
@@ -369,7 +369,7 @@ env-drift is built to stay bounded on hostile input — no catastrophic backtrac
 - A self-contained [secret-scan CI workflow](.github/workflows/secret-scan.yml) keeps `.env` files and high-signal secrets out of the repository and the published package.
 
 ```ts
-import { SecretValue } from "env-drift";
+import { SecretValue } from "envcanary";
 
 const s = new SecretValue("hunter2");
 console.log(`${s}`);            // ••••••••
@@ -380,13 +380,13 @@ s.reveal();                     // "hunter2"  (explicit, auditable)
 ## CLI
 
 ```text
-env-drift init                          Scaffold a starter contract
-env-drift scan [--env name]             Scan code & .env files against the contract
-env-drift check --env <name> [--file f] Validate an environment against the contract
-env-drift diff <envA> <envB>            Policy-aware comparison of two environments
-env-drift explain <VAR> --env <name>    Show provenance and policy for one variable
-env-drift generate <example|types|docs> Emit an artifact from the contract
-env-drift doctor                        Sanity-check the project setup
+envcanary init                          Scaffold a starter contract
+envcanary scan [--env name]             Scan code & .env files against the contract
+envcanary check --env <name> [--file f] Validate an environment against the contract
+envcanary diff <envA> <envB>            Policy-aware comparison of two environments
+envcanary explain <VAR> --env <name>    Show provenance and policy for one variable
+envcanary generate <example|types|docs> Emit an artifact from the contract
+envcanary doctor                        Sanity-check the project setup
 ```
 
 Output formats: `--format terminal | json | sarif`. Deterministic exit codes:
@@ -405,8 +405,8 @@ A provider failure must never be treated as "no drift", so it maps to exit `4`, 
 Validate and load the environment at startup — typed, normalized, immutable, and secret-aware. By default it fails before the app accepts traffic in non-local environments:
 
 ```ts
-import { loadEnvironment } from "env-drift/runtime";
-import contract from "../env-drift.config";
+import { loadEnvironment } from "envcanary/runtime";
+import contract from "../envcanary.config";
 
 export const env = loadEnvironment({
   contract,
@@ -424,9 +424,9 @@ The returned object is frozen and restricted to variables declared for that serv
 ## CI/CD Integration
 
 ```yaml
-- run: npx env-drift scan --env production --format sarif > env-drift.sarif
+- run: npx envcanary scan --env production --format sarif > envcanary.sarif
 - uses: github/codeql-action/upload-sarif@v3
-  with: { sarif_file: env-drift.sarif }
+  with: { sarif_file: envcanary.sarif }
 ```
 
 SARIF is an OASIS standard for static-analysis results, and GitHub ingests third-party SARIF into code scanning — so an `ENV007` exposure finding can appear inline on the pull request that introduced it.
@@ -462,9 +462,9 @@ import {
   render, renderSarif, reportExitCode,
   SecretValue, maskValue, fingerprint, compareValues,
   CODES,                         // the ENV001…ENV016 registry
-} from "env-drift";
+} from "envcanary";
 
-import { loadEnvironment } from "env-drift/runtime";
+import { loadEnvironment } from "envcanary/runtime";
 ```
 
 See the typed signatures and JSDoc in your editor for full details.
@@ -478,7 +478,7 @@ See the typed signatures and JSDoc in your editor for full details.
 | `1.2` | systemd and Kubernetes deployment/runtime drift (`ENV012`), secret lifecycle (`ENV015`) | planned |
 | `1.3+` | Signed metadata snapshots, optional dashboard & history | planned |
 
-env-drift is local-first and useful without an account or hosted service.
+envcanary is local-first and useful without an account or hosted service.
 
 ## Contributing
 
@@ -486,15 +486,15 @@ Contributions are welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md) and the [
 
 ## Third-Party Notices
 
-env-drift ships **zero runtime dependencies** and bundles no third-party code, so there is no upstream code or data to attribute. The dotenv parser and the JS/TS scanner are original implementations. env-drift's behaviour follows public specifications and methodologies — [Twelve-Factor Config](https://12factor.net/config), [SARIF 2.1.0 (OASIS)](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html), and [JSON Schema](https://json-schema.org/) — which are referenced as inspiration only, not redistributed. Development-only dependencies (TypeScript, Jest) are listed in `devDependencies` and are not part of the published package.
+envcanary ships **zero runtime dependencies** and bundles no third-party code, so there is no upstream code or data to attribute. The dotenv parser and the JS/TS scanner are original implementations. envcanary's behaviour follows public specifications and methodologies — [Twelve-Factor Config](https://12factor.net/config), [SARIF 2.1.0 (OASIS)](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html), and [JSON Schema](https://json-schema.org/) — which are referenced as inspiration only, not redistributed. Development-only dependencies (TypeScript, Jest) are listed in `devDependencies` and are not part of the published package.
 
 ## Limitations
 
-- **Static analysis has limits.** Computed/dynamic environment access cannot be fully resolved; env-drift reports it as `ENV014` / `UNKNOWN` rather than guessing.
+- **Static analysis has limits.** Computed/dynamic environment access cannot be fully resolved; envcanary reports it as `ENV014` / `UNKNOWN` rather than guessing.
 - **Scope.** Docker/Compose and Next.js build-manifest drift (`ENV009`) ship today. Provider integrations (GitHub/GitLab/Vercel/Vault → `ENV013`), Kubernetes/systemd stale-runtime detection (`ENV012`), and secret lifecycle (`ENV015`) are declared in the taxonomy but land in later releases — see the [roadmap](#roadmap).
 - **Adapter locations.** Docker/Compose findings currently point at the file (line `1`); precise line tracking through the YAML parser is a follow-up.
 - **TypeScript configs are not loaded directly** (zero-dependency policy). Use a JS/JSON contract or compile first.
-- **Not a secret manager.** env-drift detects drift; it never mutates production, rotates secrets, or exports values.
+- **Not a secret manager.** envcanary detects drift; it never mutates production, rotates secrets, or exports values.
 
 ## License
 

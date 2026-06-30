@@ -2,11 +2,11 @@
  * Locates and loads the environment contract from disk.
  *
  * Supported forms (first match wins):
- *   env-drift.config.js / .cjs / .mjs   — a module whose default (or
+ *   envcanary.config.js / .cjs / .mjs   — a module whose default (or
  *                                         module.exports) export is the contract
- *   env-drift.config.json               — the raw contract shape as JSON
+ *   envcanary.config.json               — the raw contract shape as JSON
  *
- * TypeScript configs (`.ts`) are intentionally not loaded directly: env-drift
+ * TypeScript configs (`.ts`) are intentionally not loaded directly: envcanary
  * ships zero runtime dependencies and will not pull in a TS loader. Compile the
  * config, or author it in JS/JSON. The CLI reports this as a clear error.
  */
@@ -27,10 +27,10 @@ const dynamicImport = new Function('url', 'return import(url)') as (
 ) => Promise<{ default?: Contract } & Record<string, unknown>>;
 
 const CANDIDATES = [
-  'env-drift.config.js',
-  'env-drift.config.cjs',
-  'env-drift.config.mjs',
-  'env-drift.config.json',
+  'envcanary.config.js',
+  'envcanary.config.cjs',
+  'envcanary.config.mjs',
+  'envcanary.config.json',
 ];
 
 /** An error loading or resolving the contract (CLI exit code 2). */
@@ -60,14 +60,14 @@ export async function loadContract(pathOrDir: string): Promise<{ contract: Contr
 
   if (!resolved) {
     throw new ContractLoadError(
-      `no contract found. Create one of: ${CANDIDATES.join(', ')} (see \`env-drift init\`).`,
+      `no contract found. Create one of: ${CANDIDATES.join(', ')} (see \`envcanary init\`).`,
     );
   }
 
   if (resolved.endsWith('.ts')) {
     throw new ContractLoadError(
       `TypeScript configs are not loaded directly (zero-dependency policy). ` +
-        `Compile "${resolved}" to JS, or author an env-drift.config.js / .json contract.`,
+        `Compile "${resolved}" to JS, or author an envcanary.config.js / .json contract.`,
     );
   }
 

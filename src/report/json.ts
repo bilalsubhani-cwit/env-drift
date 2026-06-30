@@ -10,7 +10,7 @@ import type { DriftReport } from '../types.js';
 /** Serializes a report to a stable JSON string. */
 export function renderJson(report: DriftReport, opts: { pretty?: boolean } = {}): string {
   const payload = {
-    tool: 'env-drift',
+    tool: 'envcanary',
     schemaVersion: 1,
     status: report.status,
     environment: report.environment ?? null,

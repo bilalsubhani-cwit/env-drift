@@ -1,5 +1,5 @@
 /**
- * Core type definitions for env-drift: the environment contract, variable
+ * Core type definitions for envcanary: the environment contract, variable
  * declarations, scan results, and drift findings.
  *
  * These types are the public, stable surface of the package. Rule identifiers

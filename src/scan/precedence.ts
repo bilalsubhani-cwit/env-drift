@@ -1,5 +1,5 @@
 /**
- * Resolves which `.env` file actually wins for each key, so env-drift can show
+ * Resolves which `.env` file actually wins for each key, so envcanary can show
  * provenance and detect shadowing (`ENV006`).
  *
  * The precedence order follows the widely-used dotenv/Next.js layering, where a

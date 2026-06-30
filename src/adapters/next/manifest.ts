@@ -25,7 +25,7 @@ const CLIENT_PREFIXES = ['NEXT_PUBLIC_', 'VITE_', 'REACT_APP_', 'PUBLIC_', 'EXPO
 
 /** The build manifest shape (stable; written at build, read at deploy). */
 export interface BuildManifest {
-  tool: 'env-drift';
+  tool: 'envcanary';
   manifestVersion: 1;
   buildId: string;
   environment: EnvironmentName;
@@ -75,7 +75,7 @@ export function writeManifest(input: {
     publicVariables[name] = fingerprintPublic(input.values[name]);
   }
   return {
-    tool: 'env-drift',
+    tool: 'envcanary',
     manifestVersion: 1,
     buildId: input.buildId,
     environment: input.environment,

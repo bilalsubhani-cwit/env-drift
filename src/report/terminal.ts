@@ -55,7 +55,7 @@ export function renderTerminal(
   const c = palette(useColor);
   const lines: string[] = [];
 
-  const header = report.environment ? `env-drift — ${report.environment}` : 'env-drift';
+  const header = report.environment ? `envcanary — ${report.environment}` : 'envcanary';
   lines.push(`${c.bold}${header}${c.reset}`);
   lines.push('');
 

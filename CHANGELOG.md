@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to env-drift are recorded here. The format follows
+All notable changes to envcanary are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -16,7 +16,7 @@ _No unreleased changes yet._
 
 ## [1.0.0] — 2026-06-29
 
-The first public release. env-drift is a configuration contract, provenance and
+The first public release. envcanary is a configuration contract, provenance and
 drift-detection engine for applications and CI/CD — secret-safe, fully offline,
 and with **zero runtime dependencies**.
 
@@ -62,7 +62,7 @@ and with **zero runtime dependencies**.
 
 ### Runtime, CLI & output
 
-- **Runtime validator** (`env-drift/runtime` → `loadEnvironment`): validates,
+- **Runtime validator** (`envcanary/runtime` → `loadEnvironment`): validates,
   coerces, and freezes the environment, restricted to declared variables, with
   a per-environment failure policy that throws before the app accepts traffic.
 - **CLI**: `init`, `scan`, `check`, `diff`, `explain`, `generate`
